@@ -1,0 +1,11 @@
+# Railway build kontekstiga kiritilmasin (venv Nixpacks tomonidan qaytadan
+# o'rnatiladi, .env/data esa SIRLAR — Railway Variables orqali beriladi).
+venv/
+.venv/
+.env
+data/
+__pycache__/
+*.pyc
+*.pptx
+!assets/*.pptx
+!assets/icons/*.png

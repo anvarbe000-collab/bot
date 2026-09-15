@@ -1,0 +1,16 @@
+# Virtual muhit
+venv/
+.venv/
+
+# Sirlar
+.env
+data/
+
+# Python
+__pycache__/
+*.pyc
+
+# Vaqtinchalik fayllar
+*.pptx
+!assets/*.pptx
+!assets/icons/*.png
