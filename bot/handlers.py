@@ -64,7 +64,7 @@ from bot.keyboards import (bosh_klaviatura, SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGM
                            FILE_QUIZ_BOT_USERNAME,
                            DARAJA_LABEL_KEY, tuzat_daraja_reply_klaviatura,
                            shablon_reply_klaviatura, SHABLON_LABEL_KEY,
-                           varaq_reply_klaviatura, VARAQ_LABEL_N,
+                           varaq_reply_klaviatura, varaq_dan_n, VARAQ_BEPUL_N,
                            INGLIZ_DARAJA_LABEL_KEY, ingliz_daraja_reply_klaviatura,
                            TARJIMA_TIL_LABEL_KEY, tarjima_til_reply_klaviatura,
                            YARATISH_TUGMA, BEKOR_TUGMA, reja_reply_klaviatura,
@@ -820,9 +820,11 @@ async def matn_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if holat == "shablon" and matn in SHABLON_LABEL_KEY:
             await _shablon_tanlandi(update, ctx, SHABLON_LABEL_KEY[matn])
             return
-        if holat == "varaq" and matn in VARAQ_LABEL_N:
-            await _varaq_tanlandi(update, ctx, VARAQ_LABEL_N[matn])
-            return
+        if holat == "varaq":
+            n = varaq_dan_n(matn)
+            if n is not None:
+                await _varaq_tanlandi(update, ctx, n)
+                return
         if holat == "tahrir":
             await _tahrir_matni_qabul(update, ctx)
             return
@@ -923,8 +925,14 @@ async def _shablon_tanlandi(update: Update, ctx: ContextTypes.DEFAULT_TYPE, key:
     ctx.user_data["shablon"] = key
     nom = TEMPLATES.get(key, {}).get("nom", key)
     chat_id = update.effective_chat.id
-    await _bosqichga_ot(ctx, chat_id, f"✨ «{nom}» tanlandi.\n\n📄 Nechta varaq bo'lsin?",
-                        varaq_reply_klaviatura())
+    pullik = admin_store.premium_yoqilganmi("slayt")
+    bepul_mavjudmi = pullik and not admin_store.bepul_slayt_ishlatganmi(chat_id)
+    narx = admin_store.narx_ol("slayt", config.TOLOV_SUM) if pullik else 0
+    matn = f"✨ «{nom}» tanlandi.\n\n📄 Nechta varaq bo'lsin?"
+    if bepul_mavjudmi:
+        matn += f"\n\n🎁 Birinchi marta — <b>{VARAQ_BEPUL_N} varoqli</b> taqdimot BEPUL!"
+    await _bosqichga_ot(ctx, chat_id, matn,
+                        varaq_reply_klaviatura(pullik, bepul_mavjudmi, narx))
     ctx.user_data["holat"] = "varaq"
 
 
@@ -1051,11 +1059,13 @@ class _CtxFor:
 
 async def _pptx_render_va_yubor(ctx, chat_id):
     """ctx.user_data['deck'] allaqachon tayyor deb hisoblab, rasm+render ishlaydi
-    va .pptx faylni yuboradi. To'lov tasdiqlangach (admin orqali) yoki to'lov
-    talab qilinmasa bevosita chaqiriladi."""
+    va .pptx faylni yuboradi. To'lov tasdiqlangach (Click orqali) yoki to'lov
+    talab qilinmasa (premium o'chirilgan YOKI bepul sinov, ikkalasida ham
+    _taqdimotni_yarat shu funksiyani TO'G'RIDAN-TO'G'RI chaqiradi) ishlaydi."""
     deck = ctx.user_data.get("deck")
     if not deck:
         return
+    bepul_sinov_edi = ctx.user_data.pop("bepul_sinov", False)
     await _reja_tozala(ctx)
     await _bosqichga_ot(ctx, chat_id, "⏳ Rasm va slaydlar tayyorlanmoqda...\n(1-2 daqiqa ketishi mumkin)")
 
@@ -1094,6 +1104,8 @@ async def _pptx_render_va_yubor(ctx, chat_id):
             os.remove(yol)
 
     admin_store.xizmat_ishlatildi("slayt")
+    if bepul_sinov_edi:
+        admin_store.bepul_slayt_belgila(chat_id)
     await _asosiyga_qayt(ctx, chat_id, "🎉 Taqdimot tayyor!\nYana nimadir qilmoqchimisiz? 👇")
 
 
@@ -1368,7 +1380,9 @@ async def _tolov_sora(ctx, chat_id):
 
 async def _taqdimotni_yarat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """✅ Yaratish (reja bosqichidagi doimiy tugma) bosilganda — DARHOL to'lovga
-    (Click) o'tkazadi; to'lov tasdiqlangach fayl avtomatik tayyorlanadi."""
+    (Click) o'tkazadi; to'lov tasdiqlangach fayl avtomatik tayyorlanadi.
+    ISTISNO: 3 varoqli taqdimot va bu foydalanuvchi hali BEPUL sinovdan
+    foydalanmagan bo'lsa — to'lovsiz, DARHOL yaratiladi (faqat bir marta)."""
     await _ochir(update.message)
     chat_id = update.effective_chat.id
     if ctx.user_data.get("ishlanmoqda"):
@@ -1377,6 +1391,12 @@ async def _taqdimotni_yarat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     deck = ctx.user_data.get("deck")
     if not deck:
         await _asosiyga_qayt(ctx, chat_id, "Avval yangi mavzu boshlang 👇")
+        return
+    if (ctx.user_data.get("jami") == VARAQ_BEPUL_N
+            and admin_store.premium_yoqilganmi("slayt")
+            and not admin_store.bepul_slayt_ishlatganmi(chat_id)):
+        ctx.user_data["bepul_sinov"] = True
+        await _pptx_render_va_yubor(ctx, chat_id)
         return
     await _tolov_sora(ctx, chat_id)
 

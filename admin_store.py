@@ -66,6 +66,7 @@ _DEFAULT = {
     "premium": {},        # xizmat -> True/False
     "ai": {},              # modul -> {"base_url":.., "key":.., "model":..}
     "rasm": {},             # {"provider":.., "base":.., "model":.., "key":.., "model_g":.., "together_key":.., "together_model":..}
+    "bepul_slayt_id_lar": [],  # bepul (3 varoqlik, birinchi marta) slaytdan foydalangan foydalanuvchi ID'lari
 }
 
 
@@ -126,6 +127,25 @@ def tashrif_qayd_et(foydalanuvchi_id):
     """/start bosilganda chaqiriladi — YANGI foydalanuvchi bo'lsa ro'yxatga qo'shadi."""
     with _lock:
         idlar = _store["tashrif_id_lar"]
+        if foydalanuvchi_id not in idlar:
+            idlar.append(foydalanuvchi_id)
+            _saqla()
+
+
+# ---------- bepul sinov (birinchi marta, 3 varoqlik slayt) ----------
+
+def bepul_slayt_ishlatganmi(foydalanuvchi_id):
+    """Bu foydalanuvchi bepul (3 varoqlik, faqat BIRINCHI marta) slaytdan
+    ALLAQACHON foydalanganmi — True bo'lsa, endi 3 varoq ham pullik."""
+    with _lock:
+        return foydalanuvchi_id in _store["bepul_slayt_id_lar"]
+
+
+def bepul_slayt_belgila(foydalanuvchi_id):
+    """Bepul slayt MUVAFFAQIYATLI yuborilgach chaqiriladi — shu foydalanuvchi
+    uchun bepul imkoniyat ENDI ishlatilgan deb belgilanadi (qayta bermaydi)."""
+    with _lock:
+        idlar = _store["bepul_slayt_id_lar"]
         if foydalanuvchi_id not in idlar:
             idlar.append(foydalanuvchi_id)
             _saqla()

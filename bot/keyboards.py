@@ -65,18 +65,42 @@ def shablon_reply_klaviatura():
 
 SHABLON_LABEL_KEY = {f"{TEMPLATES[k]['emoji']} {TEMPLATES[k]['nom']}": k for k in RUYXAT}
 
-VARAQ_TANLOV = [5, 7, 10, 12, 15]
+# 3 — birinchi marta uchun BEPUL sinov varianti (keyingi safar boshqalar kabi
+# pullik bo'lib qoladi). Doim RO'YXAT BOSHIDA — yangi foydalanuvchi birinchi
+# ko'radigan tanlov shu bo'lsin deb.
+VARAQ_TANLOV = [3, 5, 7, 10, 12, 15]
+VARAQ_BEPUL_N = 3
 
 
-def varaq_reply_klaviatura():
-    """Varaqlar soni — doimiy tugmalar + Orqaga."""
-    q = [KeyboardButton(f"📄 {n}") for n in VARAQ_TANLOV]
+def _varaq_tugma_matni(n, pullik, bepul_mavjudmi, narx):
+    if not pullik:
+        return f"📄 {n}"   # "Slayt yaratish" hozircha butunlay bepul (admin o'chirgan) — narx ko'rsatilmaydi
+    if n == VARAQ_BEPUL_N and bepul_mavjudmi:
+        return f"📄 {n} (Bepul)"
+    return f"📄 {n} ({narx:,} so'm)".replace(",", " ")
+
+
+def varaq_reply_klaviatura(pullik, bepul_mavjudmi=False, narx=0):
+    """Varaqlar soni — doimiy tugmalar + Orqaga. "Slayt yaratish" pullik
+    (admin panelda yoqilgan) bo'lsa har tugma ustida narxi (yoki 3 — hali
+    bepul sinov ishlatilmagan bo'lsa "Bepul") ko'rsatiladi; butunlay bepul
+    bo'lsa (admin o'chirgan) faqat oddiy raqamlar ko'rsatiladi."""
+    q = [KeyboardButton(_varaq_tugma_matni(n, pullik, bepul_mavjudmi, narx)) for n in VARAQ_TANLOV]
     satrlar = [q[i:i + 3] for i in range(0, len(q), 3)]
     satrlar.append([KeyboardButton(ORQAGA_TUGMA)])
     return ReplyKeyboardMarkup(satrlar, resize_keyboard=True)
 
 
-VARAQ_LABEL_N = {f"📄 {n}": n for n in VARAQ_TANLOV}
+def varaq_dan_n(matn):
+    """Tugma matnidan ("📄 3 (Bepul)" yoki "📄 12 (5000 so'm)") varaq sonini
+    ajratib oladi — narx/"Bepul" qismi o'zgarib turgani uchun ANIQ (tayyor)
+    lug'at o'rniga tugma matni BOSHIDAGI raqamni o'qiydi."""
+    if not matn.startswith("📄 "):
+        return None
+    raqam = matn[2:].split()[0].strip()
+    if raqam.isdigit() and int(raqam) in VARAQ_TANLOV:
+        return int(raqam)
+    return None
 
 
 def tuzat_daraja_reply_klaviatura():
