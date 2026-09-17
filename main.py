@@ -17,8 +17,8 @@ from telegram.ext import (Application, CommandHandler, MessageHandler,
                           CallbackQueryHandler, filters)
 
 import config
-from bot.handlers import (start, matn_router, slayd_tahrir_bosildi,
-                          tahrir_bekor, hujjat_qabul, rasm_qabul)
+from bot.handlers import (start, foydalanuvchi_komandasi, matn_router, slayd_tahrir_bosildi,
+                          tahrir_bekor, hujjat_qabul, rasm_qabul, admin_javob_tanlandi)
 from bot.admin import admin_komandasi, admin_callback
 from bot.click_webhook import click_web_ilova
 
@@ -78,7 +78,13 @@ def main():
     app.add_handler(CommandHandler("start", start))
     # --- admin panel (FAQAT config.ADMIN_ID uchun — /admin ichida tekshiriladi) ---
     app.add_handler(CommandHandler("admin", admin_komandasi))
+    # --- /user — FAQAT admin uchun ma'noli (botni oddiy foydalanuvchi rejimida sinash) ---
+    app.add_handler(CommandHandler("user", foydalanuvchi_komandasi))
     app.add_handler(CallbackQueryHandler(admin_callback, pattern=r"^adm:"))
+    # --- admin, talaba xabari ostidagi «↩️ Shu foydalanuvchiga javob yozish»
+    #     tugmasini bosganda — bir nechta talaba bir vaqtda yozganda aralashib
+    #     ketmasligi uchun (bot/handlers.py:admin_javob_tanlandi) ---
+    app.add_handler(CallbackQueryHandler(admin_javob_tanlandi, pattern=r"^admjav:\d+$"))
     # --- callbacklar (FAQAT bitta xabarga tegishli, ko'p nusxali amallar —
     #     xizmat/shablon/varaq/daraja tanlash endi botning DOIMIY tugmalari
     #     orqali, oddiy matn sifatida keladi va matn_router orqali ishlanadi) ---

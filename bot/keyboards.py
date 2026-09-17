@@ -29,6 +29,11 @@ RAVON_TUGMA = "🌟 Ravon"
 TEST_TUGMA = "📚 Filedan test yaratish"
 ADMIN_XABAR_TUGMA = "💬 Adminga xabar"
 
+# Faqat ADMIN uchun (config.ADMIN_ID) — /start bosganda oddiy foydalanuvchi
+# menyusi O'RNIGA shu ikkisi ko'rsatiladi (bot/handlers.py:start).
+ADMIN_PANEL_TUGMA = "🛡 Admin panel"
+FOYDALANUVCHI_REJIMI_TUGMA = "👤 Foydalanuvchi rejimi"
+
 DARAJA_LABEL_KEY = {IMLO_TUGMA: "imlo", RAVON_TUGMA: "ravon"}
 
 # Word/PDF fayldan Telegram test (quiz) yaratadigan alohida bot — TEST_TUGMA
@@ -46,6 +51,16 @@ def bosh_klaviatura():
          [KeyboardButton(DAVOM_TUGMA), KeyboardButton(KONSPEKT_TUGMA)],
          [KeyboardButton(INGLIZ_TUGMA), KeyboardButton(TARJIMA_TUGMA)],
          [KeyboardButton(TEST_TUGMA), KeyboardButton(ADMIN_XABAR_TUGMA)]],
+        resize_keyboard=True, is_persistent=True)
+
+
+def admin_bosh_klaviatura():
+    """ADMIN uchun DOIMIY tugmalar — /start bosganda oddiy foydalanuvchi
+    menyusi o'rniga shu ko'rsatiladi (bot doim "admin rejimi"da ochiladi,
+    /user buyrug'i bilan vaqtincha oddiy menyuga o'tish mumkin)."""
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton(ADMIN_PANEL_TUGMA)],
+         [KeyboardButton(FOYDALANUVCHI_REJIMI_TUGMA)]],
         resize_keyboard=True, is_persistent=True)
 
 
@@ -183,3 +198,13 @@ def tolov_amal_klaviaturasi(click_url):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💳 Click orqali to'lash", url=click_url)],
     ])
+
+
+def admin_talaba_javob_klaviaturasi(talaba_chat_id):
+    """Adminga forward qilingan talaba xabari OSTIDAGI tugma — bosilganda
+    ANIQ shu talaba "faol suhbat" qilib belgilanadi (bir nechta talaba BIR
+    VAQTDA yozganda ham, admin Telegramning "Reply" funksiyasidan foydalanmasa
+    ham, keyingi oddiy matn TO'G'RI odamga borishi uchun).
+    callback = 'admjav:<talaba_chat_id>'."""
+    return InlineKeyboardMarkup([[InlineKeyboardButton(
+        "↩️ Shu foydalanuvchiga javob yozish", callback_data=f"admjav:{talaba_chat_id}")]])

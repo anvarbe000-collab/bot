@@ -61,6 +61,13 @@ def _asosiy_klaviatura():
     ])
 
 
+def _asosiy_matni():
+    """Foydalanuvchilar soni SHU YERDA — admin panelni HAR ochganda darhol
+    ko'rinib turishi uchun (batafsil hisobot uchun 📊 Hisobot bosish shart emas)."""
+    soni = len(admin_store.hisobot_ol()["tashrif_id_lar"])
+    return f"🛡 <b>Admin panel</b>\n\n👥 Jami foydalanuvchilar: <b>{soni}</b>\n\nXush kelibsiz, admin!"
+
+
 async def admin_komandasi(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """/admin buyrug'i — FAQAT ADMIN_ID uchun ishlaydi, boshqalarga jim
     o'tkazib yuboriladi (adminning mavjudligini oshkor qilmaslik uchun)."""
@@ -68,8 +75,7 @@ async def admin_komandasi(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     ctx.user_data.pop("admin_tahrir", None)
     await update.message.reply_text(
-        "🛡 <b>Admin panel</b>\n\nXush kelibsiz, admin!",
-        parse_mode=ParseMode.HTML, reply_markup=_asosiy_klaviatura())
+        _asosiy_matni(), parse_mode=ParseMode.HTML, reply_markup=_asosiy_klaviatura())
 
 
 async def _ekran_yangila(q, matn, klaviatura):
@@ -361,7 +367,7 @@ async def admin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if data == "menu":
         ctx.user_data.pop("admin_tahrir", None)
         ctx.user_data.pop("umumiy_xabar_draft", None)
-        await _ekran_yangila(q, "🛡 <b>Admin panel</b>\n\nXush kelibsiz, admin!", _asosiy_klaviatura())
+        await _ekran_yangila(q, _asosiy_matni(), _asosiy_klaviatura())
     elif data == "hisobot":
         await _hisobot_korsat(q)
     elif data == "sozlash":

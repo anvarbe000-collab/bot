@@ -61,6 +61,7 @@ from bot.keyboards import (bosh_klaviatura, SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGM
                            KONSPEKT_TUGMA,
                            INGLIZ_TUGMA, TARJIMA_TUGMA, ORQAGA_TUGMA, TEST_TUGMA,
                            ADMIN_XABAR_TUGMA,
+                           ADMIN_PANEL_TUGMA, FOYDALANUVCHI_REJIMI_TUGMA, admin_bosh_klaviatura,
                            FILE_QUIZ_BOT_USERNAME,
                            DARAJA_LABEL_KEY, tuzat_daraja_reply_klaviatura,
                            shablon_reply_klaviatura, SHABLON_LABEL_KEY,
@@ -70,11 +71,11 @@ from bot.keyboards import (bosh_klaviatura, SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGM
                            YARATISH_TUGMA, BEKOR_TUGMA, reja_reply_klaviatura,
                            bekor_reply_klaviatura,
                            slayd_tahrir_tugmasi, tahrir_klaviatura,
-                           tolov_amal_klaviaturasi)
+                           tolov_amal_klaviaturasi, admin_talaba_javob_klaviaturasi)
 import config
 import admin_store
 import click_pay
-from bot.admin import admin_matn_qabul, admin_rasm_qabul
+from bot.admin import admin_matn_qabul, admin_rasm_qabul, admin_komandasi
 from config import GRID_IMAGE
 
 # Admin ("Adminga xabar" javob-yo'naltirishda) O'ZI shu tugmalardan birini
@@ -83,6 +84,7 @@ from config import GRID_IMAGE
 _ADMIN_UZI_ISHLATADIGAN_TUGMALAR = (
     SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGMA, KONSPEKT_TUGMA, INGLIZ_TUGMA,
     TARJIMA_TUGMA, TEST_TUGMA, ADMIN_XABAR_TUGMA, ORQAGA_TUGMA, BEKOR_TUGMA,
+    ADMIN_PANEL_TUGMA, FOYDALANUVCHI_REJIMI_TUGMA,
 )
 
 
@@ -379,6 +381,21 @@ async def _reja_tozala(ctx):
 
 # ---------- /start ----------
 
+def _admin_salom_matni():
+    """Admin /start bosganda ko'radigan xabar — foydalanuvchilar soni SHU
+    YERDA doim (bot ochilgan HAR safar) ko'rinib turishi uchun (Telegram bot
+    profilida kanaldagi kabi "obunachilar" belgisi bo'lmaydi — buning eng
+    yaqin, amalda ishlaydigan muqobili shu)."""
+    soni = len(admin_store.hisobot_ol()["tashrif_id_lar"])
+    return (
+        "🛡 <b>Admin rejimi</b>\n\n"
+        f"👥 Jami foydalanuvchilar: <b>{soni}</b>\n\n"
+        "🛡 Admin panel — statistika, narxlar, sozlamalar.\n"
+        "👤 Foydalanuvchi rejimi — botni oddiy foydalanuvchi sifatida sinash uchun.\n\n"
+        "Pastdagi tugmalardan foydalaning 👇"
+    )
+
+
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     eski = ctx.user_data.get("asosiy_msg")
     if eski:
@@ -389,6 +406,25 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
     ctx.user_data["holat"] = "asosiy"
     admin_store.tashrif_qayd_et(update.effective_user.id)
+    if config.ADMIN_ID and update.effective_user.id == config.ADMIN_ID:
+        await update.message.reply_text(
+            _admin_salom_matni(), parse_mode=ParseMode.HTML, reply_markup=admin_bosh_klaviatura())
+        return
+    await update.message.reply_text(_salom_matni(), parse_mode=ParseMode.HTML, reply_markup=bosh_klaviatura())
+
+
+async def foydalanuvchi_komandasi(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """/user — FAQAT admin uchun ma'noli: botni VAQTINCHA oddiy foydalanuvchi
+    menyusida sinash imkonini beradi (keyingi /start yana admin rejimiga
+    qaytaradi). Oddiy foydalanuvchi uchun /start bilan bir xil natija beradi."""
+    eski = ctx.user_data.get("asosiy_msg")
+    if eski:
+        try:
+            await ctx.bot.delete_message(chat_id=eski[0], message_id=eski[1])
+        except Exception:
+            pass
+    ctx.user_data.clear()
+    ctx.user_data["holat"] = "asosiy"
     await update.message.reply_text(_salom_matni(), parse_mode=ParseMode.HTML, reply_markup=bosh_klaviatura())
 
 
@@ -556,7 +592,9 @@ async def _admin_xabar_yubor(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"{_esc(matn)}"
     )
     try:
-        yuborilgan = await ctx.bot.send_message(config.ADMIN_ID, izoh, parse_mode=ParseMode.HTML)
+        yuborilgan = await ctx.bot.send_message(
+            config.ADMIN_ID, izoh, parse_mode=ParseMode.HTML,
+            reply_markup=admin_talaba_javob_klaviaturasi(chat_id))
     except Exception:
         log.exception("adminga xabar yuborishda xato")
         await update.message.reply_text("😔 Kechirasiz, xabar yuborilmadi. Qaytadan urinib ko'ring.")
@@ -593,6 +631,22 @@ async def _admin_javob_yubor(update: Update, ctx: ContextTypes.DEFAULT_TYPE, tal
             "😔 Yuborilmadi — foydalanuvchi botni bloklagan bo'lishi mumkin.")
         return
     await update.message.reply_text("✅ Javobingiz yuborildi.")
+
+
+async def admin_javob_tanlandi(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Admin talaba xabari ostidagi «↩️ Shu foydalanuvchiga javob yozish»
+    tugmasini bosganda — ANIQ shu talabani "faol suhbat" qilib belgilaydi.
+    Bir nechta talaba BIR VAQTDA yozganda (masalan A, keyin B murojaat qilsa)
+    _ADMIN_FAOL_TALABA oxirgisiga (B) o'tib qolgan bo'lardi — admin shu
+    tugmani bosib, "Reply" qilmasdan ham ANIQ A ga qaytib javob yoza oladi."""
+    global _ADMIN_FAOL_TALABA
+    q = update.callback_query
+    if not config.ADMIN_ID or update.effective_user.id != config.ADMIN_ID:
+        await q.answer("Bu tugma faqat administrator uchun.", show_alert=True)
+        return
+    talaba_id = int(q.data.split(":", 1)[1])
+    _ADMIN_FAOL_TALABA = talaba_id
+    await q.answer(f"✅ Endi shu foydalanuvchiga javob yozayapsiz (ID: {talaba_id})", show_alert=True)
 
 
 DARAJA_NOMI = {"imlo": "Imlo", "ravon": "Ravon"}
@@ -800,6 +854,12 @@ async def matn_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     if matn == ADMIN_XABAR_TUGMA:
         await _admin_xabar_boshla(update, ctx)
+        return
+    if matn == ADMIN_PANEL_TUGMA:
+        await admin_komandasi(update, ctx)
+        return
+    if matn == FOYDALANUVCHI_REJIMI_TUGMA:
+        await foydalanuvchi_komandasi(update, ctx)
         return
     # Orqaga / Bekor qilish — QAYSI mode/holatda bo'lishidan qat'iy nazar
     # (reja ko'rib chiqish, to'lov kutish va h.k.) doim bosh menyuga qaytaradi.
