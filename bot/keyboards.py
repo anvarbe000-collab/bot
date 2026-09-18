@@ -28,6 +28,7 @@ IMLO_TUGMA = "🔍 Imlo"
 RAVON_TUGMA = "🌟 Ravon"
 TEST_TUGMA = "📚 Filedan test yaratish"
 ADMIN_XABAR_TUGMA = "💬 Adminga xabar"
+REFERAL_TUGMA = "👥 Do'st chaqir"
 
 # Faqat ADMIN uchun (config.ADMIN_ID) — /start bosganda oddiy foydalanuvchi
 # menyusi O'RNIGA shu ikkisi ko'rsatiladi (bot/handlers.py:start).
@@ -44,13 +45,14 @@ FILE_QUIZ_BOT_USERNAME = "FileQuizMakerBot"
 
 
 def bosh_klaviatura():
-    """Botning bosh menyusi — YETTITA xizmat + adminga xabar, har doim shu
-    tartibda va ko'rinishda qaytiladi."""
+    """Botning bosh menyusi — YETTITA xizmat + adminga xabar + do'st chaqir,
+    har doim shu tartibda va ko'rinishda qaytiladi."""
     return ReplyKeyboardMarkup(
         [[KeyboardButton(SLAYT_TUGMA), KeyboardButton(TUZAT_TUGMA)],
          [KeyboardButton(DAVOM_TUGMA), KeyboardButton(KONSPEKT_TUGMA)],
          [KeyboardButton(INGLIZ_TUGMA), KeyboardButton(TARJIMA_TUGMA)],
-         [KeyboardButton(TEST_TUGMA), KeyboardButton(ADMIN_XABAR_TUGMA)]],
+         [KeyboardButton(TEST_TUGMA), KeyboardButton(ADMIN_XABAR_TUGMA)],
+         [KeyboardButton(REFERAL_TUGMA)]],
         resize_keyboard=True, is_persistent=True)
 
 

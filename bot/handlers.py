@@ -60,7 +60,7 @@ from slides.design import TEMPLATES
 from bot.keyboards import (bosh_klaviatura, SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGMA,
                            KONSPEKT_TUGMA,
                            INGLIZ_TUGMA, TARJIMA_TUGMA, ORQAGA_TUGMA, TEST_TUGMA,
-                           ADMIN_XABAR_TUGMA,
+                           ADMIN_XABAR_TUGMA, REFERAL_TUGMA,
                            ADMIN_PANEL_TUGMA, FOYDALANUVCHI_REJIMI_TUGMA, admin_bosh_klaviatura,
                            FILE_QUIZ_BOT_USERNAME,
                            DARAJA_LABEL_KEY, tuzat_daraja_reply_klaviatura,
@@ -75,6 +75,7 @@ from bot.keyboards import (bosh_klaviatura, SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGM
 import config
 import admin_store
 import click_pay
+import referal_store
 from bot.admin import admin_matn_qabul, admin_rasm_qabul, admin_komandasi
 from config import GRID_IMAGE
 
@@ -84,7 +85,7 @@ from config import GRID_IMAGE
 _ADMIN_UZI_ISHLATADIGAN_TUGMALAR = (
     SLAYT_TUGMA, TUZAT_TUGMA, DAVOM_TUGMA, KONSPEKT_TUGMA, INGLIZ_TUGMA,
     TARJIMA_TUGMA, TEST_TUGMA, ADMIN_XABAR_TUGMA, ORQAGA_TUGMA, BEKOR_TUGMA,
-    ADMIN_PANEL_TUGMA, FOYDALANUVCHI_REJIMI_TUGMA,
+    ADMIN_PANEL_TUGMA, FOYDALANUVCHI_REJIMI_TUGMA, REFERAL_TUGMA,
 )
 
 
@@ -405,7 +406,13 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
     ctx.user_data.clear()
     ctx.user_data["holat"] = "asosiy"
-    admin_store.tashrif_qayd_et(update.effective_user.id)
+    user_id = update.effective_user.id
+    admin_store.tashrif_qayd_et(user_id)
+    # Referal havola: /start ref_<referrer_id> — FAQAT bu foydalanuvchi uchun
+    # referrer HALI yozilmagan bo'lsa va o'zini-o'zi chaqirish bo'lmasa
+    # belgilanadi (referal_store.referrer_belgila ICHIDA tekshiriladi).
+    if ctx.args and ctx.args[0].startswith("ref_"):
+        referal_store.referrer_belgila(user_id, ctx.args[0][len("ref_"):])
     if config.ADMIN_ID and update.effective_user.id == config.ADMIN_ID:
         await update.message.reply_text(
             _admin_salom_matni(), parse_mode=ParseMode.HTML, reply_markup=admin_bosh_klaviatura())
@@ -511,6 +518,25 @@ async def _filedan_test_yaratish(update: Update, ctx: ContextTypes.DEFAULT_TYPE)
         "📚 Filedan test yaratish uchun havolani bosing — Quiz bot ochiladi va "
         "Start avtomatik bosiladi:\n"
         f"https://t.me/{FILE_QUIZ_BOT_USERNAME}?start=slaytbot")
+
+
+async def _referal_korsat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """👥 Do'st chaqir doimiy tugmasi bosilganda — joriy oqimga tegmaydi,
+    faqat shaxsiy referal havolasi va statistikani ko'rsatadi."""
+    await _ochir(update.message)
+    chat_id = update.effective_chat.id
+    havola = f"https://t.me/{ctx.bot.username}?start=ref_{chat_id}"
+    stat = referal_store.statistika_ol(chat_id)
+    await update.message.reply_text(
+        "👥 <b>Do'st chaqir — balans yutib ol!</b>\n\n"
+        f"🔗 Shaxsiy havolangiz:\n<code>{havola}</code>\n\n"
+        f"👤 Chaqirilgan do'stlar: <b>{stat['chaqirganlar_soni']}</b>\n"
+        f"💰 Referaldan yig'ilgan: <b>{_som(stat['referral_daromad'])} so'm</b>\n"
+        f"💳 Joriy balans: <b>{_som(stat['balans'])} so'm</b>\n\n"
+        f"ℹ️ Har do'stingiz birinchi marta to'lov qilganda — sizga "
+        f"<b>{_som(referal_store.REFERAL_BONUS)} so'm</b> balans qo'shiladi. "
+        "Balansni botdagi pullik xizmatlarda ishlatasiz (naqd pul emas).",
+        parse_mode=ParseMode.HTML)
 
 
 # ---------- Adminga xabar (ikki tomonlama chat) ----------
@@ -851,6 +877,9 @@ async def matn_router(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     if matn == TEST_TUGMA:
         await _filedan_test_yaratish(update, ctx)
+        return
+    if matn == REFERAL_TUGMA:
+        await _referal_korsat(update, ctx)
         return
     if matn == ADMIN_XABAR_TUGMA:
         await _admin_xabar_boshla(update, ctx)
@@ -1399,8 +1428,12 @@ async def _tolov_muddat_tugadi(ctx: ContextTypes.DEFAULT_TYPE):
 async def _tolov_sora(ctx, chat_id):
     """Joriy xizmat (ctx.user_data['mode']) uchun to'lov TALAB qilinadimi
     tekshiradi (admin panel orqali premium O'CHIRILGAN bo'lsa — to'lovsiz
-    DARHOL bajaradi). Yoqilgan bo'lsa — reja/slayd xabarlarini tozalab, Click
-    orqali to'lov havolasini yaratadi va DARHOL to'lov ekraniga o'tkazadi (bu —
+    DARHOL bajaradi). Yoqilgan bo'lsa — AVVAL referal BALANSI narxni TO'LIQ
+    qoplaydimi tekshiradi (qoplasa — Click SHART EMAS, balansdan yechib,
+    DARHOL bajaradi; balans qisman yetarli bo'lsa ham ARALASHTIRILMAYDI,
+    oddiy Click to'lovi so'raladi va balans TEGILMAY qoladi — keyingi safarga
+    saqlanadi). Aks holda — reja/slayd xabarlarini tozalab, Click orqali
+    to'lov havolasini yaratadi va DARHOL to'lov ekraniga o'tkazadi (bu —
     istalgan pullik xizmat: slayt, ingliz, ... uchun UMUMIY). Click COMPLETE
     webhook kelgach (bot/click_webhook.py) xizmat AVTOMATIK topshiriladi —
     admin ishtirokisiz. Asosiy tugmalar o'rniga FAQAT Bekor qilish ko'rsatiladi,
@@ -1412,6 +1445,13 @@ async def _tolov_sora(ctx, chat_id):
         if bajaruvchi:
             await bajaruvchi(ctx, chat_id)
         return
+    summa = admin_store.narx_ol(mode, config.TOLOV_SUM)
+    bajaruvchi = _TOLOV_BAJARUVCHI.get(mode)
+    if bajaruvchi and referal_store.balans_ayir(chat_id, summa):
+        await ctx.bot.send_message(
+            chat_id, f"💳 To'lov balansingizdan yechildi ({_som(summa)} so'm). Tayyorlanmoqda... ⏳")
+        await bajaruvchi(ctx, chat_id)
+        return
     if not config.click_sozlangan():
         log.warning("Click sozlanmagan (.env bo'sh) — pullik xizmat ishlamaydi (mode=%s)", mode)
         await _asosiyga_qayt(
@@ -1421,7 +1461,6 @@ async def _tolov_sora(ctx, chat_id):
     await _reja_tozala(ctx)
     tolov_id = uuid.uuid4().hex[:10]
     ctx.user_data["tolov_id"] = tolov_id
-    summa = admin_store.narx_ol(mode, config.TOLOV_SUM)
     ctx.user_data["tolov_summa"] = summa
     click_order_id = click_pay.yangi_buyurtma(chat_id, mode, summa)
     ctx.user_data["click_order_id"] = click_order_id

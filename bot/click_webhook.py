@@ -13,6 +13,7 @@ from aiohttp import web
 
 import click_pay
 import admin_store
+import referal_store
 from bot.handlers import _TOLOV_BAJARUVCHI, _CtxFor
 
 log = logging.getLogger("click_webhook")
@@ -48,7 +49,11 @@ async def _complete(request):
 async def _xizmatni_topshir(application, buyurtma):
     """Click COMPLETE muvaffaqiyatli bo'lgach — talabaning kutayotgan ishini
     (slayt render, ingliz tahlili va h.k.) admin qo'lda tasdiqlaganidagi BILAN
-    AYNAN BIR XIL yo'l (_TOLOV_BAJARUVCHI) orqali bajaradi."""
+    AYNAN BIR XIL yo'l (_TOLOV_BAJARUVCHI) orqali bajaradi. Bu — REAL (Click
+    orqali) pul bilan to'lov, shu sabab shu yerda (va FAQAT shu yerda) talaba
+    referal orqali kirgan bo'lsa va bu uning BIRINCHI to'lovi bo'lsa, uni
+    chaqirgan odamga bonus beriladi (referal_store O'ZI idempotent — bir xil
+    chat_id uchun ikkinchi marta chaqirilsa hech narsa qilmaydi)."""
     chat_id = buyurtma["chat_id"]
     mode = buyurtma["mode"]
     talaba_ud = application.user_data[chat_id]
@@ -58,6 +63,16 @@ async def _xizmatni_topshir(application, buyurtma):
                     mode, chat_id)
         return
     admin_store.tolov_qayd_et(mode, buyurtma["summa"])
+    referrer_id, bonus_berildi = referal_store.birinchi_tolov_va_bonus_qayta_ishla(chat_id)
+    if bonus_berildi:
+        try:
+            await application.bot.send_message(
+                referrer_id,
+                "🎉 <b>Tabriklaymiz!</b> Do'stingiz birinchi to'lovni amalga oshirdi.\n"
+                f"💰 Balansingizga <b>{referal_store.REFERAL_BONUS} so'm</b> qo'shildi.",
+                parse_mode="HTML")
+        except Exception:
+            log.warning("Referrerga bonus xabarini yuborib bo'lmadi (referrer_id=%s)", referrer_id)
     talaba_ud.pop("click_order_id", None)
     try:
         await application.bot.send_message(chat_id, "✅ To'lov Click orqali qabul qilindi! Tayyorlanmoqda... ⏳")
