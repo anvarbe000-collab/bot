@@ -20,7 +20,10 @@ Referal mantig'i (firibga qarshi):
 
 import os
 import json
+import logging
 import threading
+
+log = logging.getLogger("referal_store")
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.path.join(_BASE_DIR, "data")
@@ -87,16 +90,24 @@ def referrer_belgila(user_id, referrer_id):
         referrer_id = int(referrer_id)
         user_id = int(user_id)
     except (TypeError, ValueError):
+        log.info("Referal: yaroqsiz referrer_id (raqam emas) — user_id=%s", user_id)
         return False
-    if referrer_id <= 0 or referrer_id == user_id:
+    if referrer_id <= 0:
+        log.info("Referal: yaroqsiz referrer_id=%s (musbat son emas) — user_id=%s", referrer_id, user_id)
+        return False
+    if referrer_id == user_id:
+        log.info("Referal: o'zini-o'zi chaqirish bloklandi (user_id=%s)", user_id)
         return False
     with _lock:
         yozuv = _yozuv(user_id)
         if yozuv["referrer_id"] is not None:
+            log.info("Referal: user_id=%s uchun referrer ALLAQACHON bor (%s) — o'zgartirilmadi",
+                     user_id, yozuv["referrer_id"])
             return False   # allaqachon chaqirilgan — o'zgartirilmaydi
         yozuv["referrer_id"] = referrer_id
         _yozuv(referrer_id)["chaqirganlar_soni"] += 1
         _saqla()
+        log.info("Referal: user_id=%s endi referrer_id=%s orqali belgilandi", user_id, referrer_id)
         return True
 
 
@@ -122,6 +133,7 @@ def birinchi_tolov_va_bonus_qayta_ishla(user_id):
     with _lock:
         yozuv = _yozuv(user_id)
         if yozuv["birinchi_tolov_qilgan"]:
+            log.info("Referal bonus: user_id=%s uchun ALLAQACHON birinchi to'lov qayd etilgan — o'tkazib yuborildi", user_id)
             return None, False   # bu ALLAQACHON birinchi to'lov emas — hech narsa qilinmaydi
         yozuv["birinchi_tolov_qilgan"] = True
 
@@ -134,6 +146,12 @@ def birinchi_tolov_va_bonus_qayta_ishla(user_id):
             referrer_yozuv["referral_daromad"] += REFERAL_BONUS
             bonus_berildi = True
         _saqla()
+        if bonus_berildi:
+            log.info("Referal bonus: user_id=%s birinchi to'lov qildi -> referrer_id=%s ga +%s so'm",
+                     user_id, referrer_id, REFERAL_BONUS)
+        else:
+            log.info("Referal bonus: user_id=%s birinchi to'lov qildi, lekin referrer yo'q/bonus allaqachon berilgan",
+                     user_id)
         return (referrer_id if bonus_berildi else None), bonus_berildi
 
 

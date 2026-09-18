@@ -28,7 +28,7 @@ IMLO_TUGMA = "🔍 Imlo"
 RAVON_TUGMA = "🌟 Ravon"
 TEST_TUGMA = "📚 Filedan test yaratish"
 ADMIN_XABAR_TUGMA = "💬 Adminga xabar"
-REFERAL_TUGMA = "👥 Do'st chaqir"
+REFERAL_TUGMA = "👥 Referallar"
 
 # Faqat ADMIN uchun (config.ADMIN_ID) — /start bosganda oddiy foydalanuvchi
 # menyusi O'RNIGA shu ikkisi ko'rsatiladi (bot/handlers.py:start).

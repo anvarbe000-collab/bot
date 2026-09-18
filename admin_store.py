@@ -183,6 +183,18 @@ def premium_yoqilganmi(xizmat):
         return bool(qiymat) if qiymat is not None else bool(_PREMIUM_STANDART.get(xizmat, False))
 
 
+def eng_arzon_pullik_xizmat(standart_narx):
+    """Hozir PREMIUM yoqilgan xizmatlar orasidan ENG ARZONINI (mode, narx)
+    qaytaradi — hech biri yoqilmagan bo'lsa (None, None). Referal balans
+    "xizmatlardan bepul foydalanish uchun yetarlimi" ko'rsatkichi uchun
+    ishlatiladi (bot/handlers.py, bot/click_webhook.py). ICHKARIDA narx_ol/
+    premium_yoqilganmi O'ZI qulflaydi — bu yerda qo'shimcha lock OLINMAYDI."""
+    variantlar = [(x, narx_ol(x, standart_narx)) for x in PULLIK_XIZMATLAR if premium_yoqilganmi(x)]
+    if not variantlar:
+        return None, None
+    return min(variantlar, key=lambda t: t[1])
+
+
 def premium_almashtir(xizmat):
     """Joriy holatni teskarisiga o'zgartiradi, YANGI holatni qaytaradi."""
     with _lock:

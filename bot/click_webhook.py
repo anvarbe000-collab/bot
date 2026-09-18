@@ -11,6 +11,7 @@ import logging
 
 from aiohttp import web
 
+import config
 import click_pay
 import admin_store
 import referal_store
@@ -65,12 +66,21 @@ async def _xizmatni_topshir(application, buyurtma):
     admin_store.tolov_qayd_et(mode, buyurtma["summa"])
     referrer_id, bonus_berildi = referal_store.birinchi_tolov_va_bonus_qayta_ishla(chat_id)
     if bonus_berildi:
+        yangi_balans = referal_store.balans_ol(referrer_id)
+        eski_balans = yangi_balans - referal_store.REFERAL_BONUS
+        xabar = (
+            "🎉 <b>Tabriklaymiz!</b> Do'stingiz birinchi to'lovni amalga oshirdi.\n"
+            f"💰 Balansingizga <b>{referal_store.REFERAL_BONUS} so'm</b> qo'shildi "
+            f"(joriy balans: <b>{yangi_balans} so'm</b>).")
+        # Balans AYNAN shu bonus bilan birinchi marta eng arzon xizmatni qoplaydigan
+        # darajaga YETGAN bo'lsa (oldin yetmagan, endi yetadi) — alohida, ANIQ eslatma.
+        _, eng_arzon_narx = admin_store.eng_arzon_pullik_xizmat(config.TOLOV_SUM)
+        if eng_arzon_narx and eski_balans < eng_arzon_narx <= yangi_balans:
+            xabar += (
+                "\n\n🎁 Endi siz botdagi xizmatlardan (masalan Slayt yaratish) "
+                "<b>BEPUL</b> foydalanishingiz mumkin — «👥 Referallar» bo'limiga qarang!")
         try:
-            await application.bot.send_message(
-                referrer_id,
-                "🎉 <b>Tabriklaymiz!</b> Do'stingiz birinchi to'lovni amalga oshirdi.\n"
-                f"💰 Balansingizga <b>{referal_store.REFERAL_BONUS} so'm</b> qo'shildi.",
-                parse_mode="HTML")
+            await application.bot.send_message(referrer_id, xabar, parse_mode="HTML")
         except Exception:
             log.warning("Referrerga bonus xabarini yuborib bo'lmadi (referrer_id=%s)", referrer_id)
     talaba_ud.pop("click_order_id", None)

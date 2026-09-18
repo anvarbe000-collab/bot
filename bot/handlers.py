@@ -521,21 +521,35 @@ async def _filedan_test_yaratish(update: Update, ctx: ContextTypes.DEFAULT_TYPE)
 
 
 async def _referal_korsat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """👥 Do'st chaqir doimiy tugmasi bosilganda — joriy oqimga tegmaydi,
+    """👥 Referallar doimiy tugmasi bosilganda — joriy oqimga tegmaydi,
     faqat shaxsiy referal havolasi va statistikani ko'rsatadi."""
     await _ochir(update.message)
     chat_id = update.effective_chat.id
     havola = f"https://t.me/{ctx.bot.username}?start=ref_{chat_id}"
     stat = referal_store.statistika_ol(chat_id)
+    balans = stat["balans"]
+
+    xizmat_mode, eng_arzon_narx = admin_store.eng_arzon_pullik_xizmat(config.TOLOV_SUM)
+    if eng_arzon_narx is None:
+        holat_matni = "\nℹ️ Hozircha barcha xizmatlar bepul — balans hozircha shart emas."
+    elif balans >= eng_arzon_narx:
+        xizmat_nom = admin_store.XIZMATLAR.get(xizmat_mode, xizmat_mode)
+        holat_matni = f"\n🎁 Balansingiz YETARLI — {xizmat_nom} (va yetadigan boshqa xizmatlar) SIZGA BEPUL!"
+    else:
+        qolgan = eng_arzon_narx - balans
+        holat_matni = f"\n📈 Yana <b>{_som(qolgan)} so'm</b> yig'sangiz — eng arzon xizmat BEPUL bo'ladi."
+
     await update.message.reply_text(
-        "👥 <b>Do'st chaqir — balans yutib ol!</b>\n\n"
+        "👥 <b>Referallar</b>\n\n"
         f"🔗 Shaxsiy havolangiz:\n<code>{havola}</code>\n\n"
         f"👤 Chaqirilgan do'stlar: <b>{stat['chaqirganlar_soni']}</b>\n"
         f"💰 Referaldan yig'ilgan: <b>{_som(stat['referral_daromad'])} so'm</b>\n"
-        f"💳 Joriy balans: <b>{_som(stat['balans'])} so'm</b>\n\n"
+        f"💳 Joriy balans: <b>{_som(balans)} so'm</b>\n"
+        f"{holat_matni}\n\n"
         f"ℹ️ Har do'stingiz birinchi marta to'lov qilganda — sizga "
-        f"<b>{_som(referal_store.REFERAL_BONUS)} so'm</b> balans qo'shiladi. "
-        "Balansni botdagi pullik xizmatlarda ishlatasiz (naqd pul emas).",
+        f"<b>{_som(referal_store.REFERAL_BONUS)} so'm</b> balans qo'shiladi. Balansingiz "
+        "biror xizmat narxini TO'LIQ qoplasa, o'sha xizmat SIZGA BEPUL bo'ladi "
+        "(Click shart emas) — balans hech qayerga yechilmaydi, faqat botda ishlatiladi.",
         parse_mode=ParseMode.HTML)
 
 
