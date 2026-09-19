@@ -59,11 +59,6 @@ async def _xizmatni_topshir(application, buyurtma):
     mode = buyurtma["mode"]
     talaba_ud = application.user_data[chat_id]
     bajaruvchi = _TOLOV_BAJARUVCHI.get(mode)
-    if not bajaruvchi or talaba_ud.get("holat") != "tolov_kutilmoqda":
-        log.warning("Click: xizmat topshirib bo'lmadi (mode=%s, chat_id=%s, holat mos emas)",
-                    mode, chat_id)
-        return
-    admin_store.tolov_qayd_et(mode, buyurtma["summa"])
     referrer_id, bonus_berildi = referal_store.birinchi_tolov_va_bonus_qayta_ishla(chat_id)
     if bonus_berildi:
         yangi_balans = referal_store.balans_ol(referrer_id)
@@ -83,10 +78,33 @@ async def _xizmatni_topshir(application, buyurtma):
             await application.bot.send_message(referrer_id, xabar, parse_mode="HTML")
         except Exception:
             log.warning("Referrerga bonus xabarini yuborib bo'lmadi (referrer_id=%s)", referrer_id)
+    if not bajaruvchi or talaba_ud.get("holat") != "tolov_kutilmoqda":
+        # Pul Click'da QABUL QILINGAN (hisobotda ko'rinadi), lekin talabaning
+        # sessiyasi yo'q (masalan bot qayta ishga tushgan) — jim o'tkazib
+        # yubormaymiz: talabaga ham, adminga ham aniq xabar beramiz.
+        log.warning("Click: xizmat topshirib bo'lmadi (mode=%s, chat_id=%s, holat mos emas)",
+                    mode, chat_id)
+        try:
+            await application.bot.send_message(
+                chat_id,
+                "✅ To'lovingiz qabul qilindi, lekin sessiya tugagani sababli xizmat "
+                "avtomatik boshlanmadi. «💬 Adminga xabar» orqali yozing — tez hal qilamiz.")
+        except Exception:
+            pass
+        if config.ADMIN_ID:
+            try:
+                await application.bot.send_message(
+                    config.ADMIN_ID,
+                    f"⚠️ To'lov qabul qilindi, lekin xizmat TOPSHIRILMADI\n"
+                    f"🆔 {chat_id} · xizmat: {mode} · {buyurtma['summa']} so'm")
+            except Exception:
+                pass
+        return
     talaba_ud.pop("click_order_id", None)
     try:
         await application.bot.send_message(chat_id, "✅ To'lov Click orqali qabul qilindi! Tayyorlanmoqda... ⏳")
         await bajaruvchi(_CtxFor(_ApplicationCtx(application), talaba_ud), chat_id)
+        click_pay.topshirildi_belgila(buyurtma["order_id"])
     except Exception:
         log.exception("Click to'lovidan keyin xizmatni topshirishda xato (chat_id=%s)", chat_id)
 

@@ -26,6 +26,7 @@ import time
 
 import config
 import admin_store
+import click_pay
 import promo_store
 
 log = logging.getLogger("admin")
@@ -95,19 +96,25 @@ def _hisobot_matni():
     st = admin_store.hisobot_ol()
     qatorlar = ["📊 <b>Umumiy hisobot</b>", "━━━━━━━━━━━━━━━", "",
                f"👥 Jami tashrif buyurganlar: <b>{len(st['tashrif_id_lar'])}</b>", ""]
-    jami_tolov = 0
+    # To'lovlar Click TASDIQLAGAN buyurtmalardan (click_orders.json) hisoblanadi —
+    # bot qayta ishga tushishi yoki talaba sessiyasi yo'qolishiga BOG'LIQ EMAS.
+    tolov = click_pay.tolov_statistika()
     for xizmat, nom in admin_store.XIZMATLAR.items():
         yoz = st["xizmatlar"].get(xizmat, {})
         ishlatilgan = yoz.get("ishlatilgan", 0)
         agar = "marta bosilgan" if xizmat == "test_link" else "marta ishlatilgan"
         qator = f"{nom}: <b>{ishlatilgan}</b> {agar}"
         if xizmat in admin_store.PULLIK_XIZMATLAR:
-            soni = yoz.get("tolov_soni", 0)
-            summa = yoz.get("tolov_summasi", 0)
-            jami_tolov += summa
+            soni, summa = tolov["xizmatlar"].get(xizmat, (0, 0))
             qator += f"\n   💰 {soni} ta to'lov — <b>{_som(summa)}</b> so'm"
         qatorlar.append(qator)
-    qatorlar += ["", "━━━━━━━━━━━━━━━", f"💵 Jami to'lov: <b>{_som(jami_tolov)}</b> so'm"]
+    jami_soni, jami_summa = tolov["jami"]
+    bugun_soni, bugun_summa = tolov["bugun"]
+    qatorlar += ["", "━━━━━━━━━━━━━━━",
+                 f"📅 Bugun: <b>{bugun_soni}</b> ta — <b>{_som(bugun_summa)}</b> so'm",
+                 f"💵 Jami to'lov: <b>{jami_soni}</b> ta — <b>{_som(jami_summa)}</b> so'm"]
+    if tolov["topshirilmagan"]:
+        qatorlar.append(f"⚠️ To'langan, lekin xizmat topshirilmagan: <b>{tolov['topshirilmagan']}</b> ta")
     return "\n".join(qatorlar)
 
 

@@ -20,7 +20,7 @@ import secrets
 import threading
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_DATA_DIR = os.path.join(_BASE_DIR, "data")
+_DATA_DIR = os.getenv("DATA_DIR") or os.path.join(_BASE_DIR, "data")   # Railway Volume uchun: DATA_DIR=/data
 _STORE_PATH = os.path.join(_DATA_DIR, "promo.json")
 
 _lock = threading.Lock()

@@ -42,7 +42,7 @@ import config
 log = logging.getLogger("click_pay")
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_DATA_DIR = os.path.join(_BASE_DIR, "data")
+_DATA_DIR = os.getenv("DATA_DIR") or os.path.join(_BASE_DIR, "data")   # Railway Volume uchun: DATA_DIR=/data
 _ORDERS_PATH = os.path.join(_DATA_DIR, "click_orders.json")
 
 _lock = threading.Lock()
@@ -91,7 +91,7 @@ def yangi_buyurtma(chat_id, mode, summa):
 def buyurtma_ol(order_id):
     with _lock:
         yoz = _buyurtmalar.get(order_id)
-        return dict(yoz) if yoz else None
+        return {**yoz, "order_id": order_id} if yoz else None
 
 
 def buyurtma_bekor_qil(order_id):
@@ -204,6 +204,40 @@ def complete_ishla(d):
         return ({**asos, "merchant_confirm_id": buyurtma.get("merchant_prepare_id"),
                 "error": -9, "error_note": "Click tomonidan bekor qilingan"}, order_id, False)
 
-    _yozib_qoy(order_id, holat="tolandi")
+    _yozib_qoy(order_id, holat="tolandi", tolandi_vaqt=time.time(), topshirildi=False)
     return ({**asos, "merchant_confirm_id": buyurtma.get("merchant_prepare_id"),
             "error": 0, "error_note": "Success"}, order_id, True)
+
+
+def topshirildi_belgila(order_id):
+    """To'lovdan keyin xizmat talabaga HAQIQATAN topshirilgach chaqiriladi."""
+    _yozib_qoy(order_id, topshirildi=True)
+
+
+_UZ_SOATI = 5 * 3600   # O'zbekiston vaqti (UTC+5) — "bugun" chegarasi shu bo'yicha
+
+
+def tolov_statistika():
+    """HAQIQIY (Click tasdiqlagan) to'lovlar statistikasi — Telegram holatiga
+    (bot qayta ishga tushishi, sessiya yo'qolishi) BOG'LIQ EMAS: faqat Click
+    COMPLETE muvaffaqiyatli bo'lgan buyurtmalar ('tolandi') sanaladi.
+    Qaytaradi: {"xizmatlar": {mode: (soni, summa)}, "jami": (soni, summa),
+    "bugun": (soni, summa), "topshirilmagan": soni}."""
+    hozir = time.time()
+    bugun_boshi = ((hozir + _UZ_SOATI) // 86400) * 86400 - _UZ_SOATI
+    xizmatlar, jami, bugun, topshirilmagan = {}, [0, 0], [0, 0], 0
+    with _lock:
+        for b in _buyurtmalar.values():
+            if b.get("holat") != "tolandi":
+                continue
+            soni, summa = xizmatlar.get(b["mode"], (0, 0))
+            xizmatlar[b["mode"]] = (soni + 1, summa + b["summa"])
+            jami[0] += 1
+            jami[1] += b["summa"]
+            if b.get("tolandi_vaqt", 0) >= bugun_boshi:
+                bugun[0] += 1
+                bugun[1] += b["summa"]
+            if b.get("topshirildi") is False:
+                topshirilmagan += 1
+    return {"xizmatlar": xizmatlar, "jami": tuple(jami), "bugun": tuple(bugun),
+            "topshirilmagan": topshirilmagan}
