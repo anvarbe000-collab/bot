@@ -124,12 +124,15 @@ def tolov_qayd_et(xizmat, summa):
 
 
 def tashrif_qayd_et(foydalanuvchi_id):
-    """/start bosilganda chaqiriladi — YANGI foydalanuvchi bo'lsa ro'yxatga qo'shadi."""
+    """/start bosilganda chaqiriladi — YANGI foydalanuvchi bo'lsa ro'yxatga
+    qo'shadi. Qaytaradi: True (aynan hozir yangi qo'shildi) yoki False (avvaldan bor)."""
     with _lock:
         idlar = _store["tashrif_id_lar"]
         if foydalanuvchi_id not in idlar:
             idlar.append(foydalanuvchi_id)
             _saqla()
+            return True
+        return False
 
 
 # ---------- bepul sinov (birinchi marta, 3 varoqlik slayt) ----------

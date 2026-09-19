@@ -76,6 +76,7 @@ import config
 import admin_store
 import click_pay
 import referal_store
+import promo_store
 from bot.admin import admin_matn_qabul, admin_rasm_qabul, admin_komandasi
 from config import GRID_IMAGE
 
@@ -407,12 +408,20 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
     ctx.user_data["holat"] = "asosiy"
     user_id = update.effective_user.id
-    admin_store.tashrif_qayd_et(user_id)
+    yangi_foydalanuvchi = admin_store.tashrif_qayd_et(user_id)
     # Referal havola: /start ref_<referrer_id> — FAQAT bu foydalanuvchi uchun
     # referrer HALI yozilmagan bo'lsa va o'zini-o'zi chaqirish bo'lmasa
     # belgilanadi (referal_store.referrer_belgila ICHIDA tekshiriladi).
     if ctx.args and ctx.args[0].startswith("ref_"):
         referal_store.referrer_belgila(user_id, ctx.args[0][len("ref_"):])
+    # Targ'ibot (promo) havolasi: /start promo_<kod> — FAQAT botga umuman
+    # BIRINCHI marta kirgan foydalanuvchi hisoblanadi (promo_store ICHIDA yana
+    # bir marta tekshiriladi: bitta odam bitta linkka faqat bir marta yoziladi).
+    if yangi_foydalanuvchi and ctx.args:
+        promo_kod = promo_store.kod_ajrat(ctx.args[0])
+        if promo_kod:
+            u = update.effective_user
+            promo_store.foydalanuvchi_qayd_et(user_id, promo_kod, u.full_name, u.username)
     if config.ADMIN_ID and update.effective_user.id == config.ADMIN_ID:
         await update.message.reply_text(
             _admin_salom_matni(), parse_mode=ParseMode.HTML, reply_markup=admin_bosh_klaviatura())

@@ -22,8 +22,11 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+import time
+
 import config
 import admin_store
+import promo_store
 
 log = logging.getLogger("admin")
 
@@ -57,6 +60,7 @@ def _asosiy_klaviatura():
         [InlineKeyboardButton("📊 Hisobot", callback_data="adm:hisobot")],
         [InlineKeyboardButton("⚙️ Sozlamalar", callback_data="adm:sozlash")],
         [InlineKeyboardButton("📢 Umumiy xabar", callback_data="adm:xabar")],
+        [InlineKeyboardButton("🔗 Targ'ibot linklari", callback_data="adm:promo")],
         [InlineKeyboardButton("✖️ Yopish", callback_data="adm:yopish")],
     ])
 
@@ -343,6 +347,80 @@ async def admin_rasm_qabul(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML, reply_markup=_xabar_tasdiq_klaviaturasi())
 
 
+# ---------- 10) Targ'ibot (promo) linklari ----------
+
+def _promo_link_url(ctx, kod):
+    return f"https://t.me/{ctx.bot.username}?start={promo_store.PREFIKS}{kod}"
+
+
+def _promo_royxat_matni():
+    linklar = promo_store.linklar_royxati()
+    qatorlar = ["🔗 <b>Targ'ibot linklari</b>", "",
+               f"Har bir YANGI foydalanuvchi uchun <b>{_som(promo_store.PROMO_HAQ)} so'm</b> hisoblanadi."]
+    if not linklar:
+        qatorlar += ["", "Hozircha link yo'q — «➕ Yangi link» bosing."]
+        return "\n".join(qatorlar)
+    qatorlar.append("")
+    jami = 0
+    for kod, nom, faol, soni in linklar:
+        summa = soni * promo_store.PROMO_HAQ
+        jami += summa
+        belgi = "🟢" if faol else "🔴"
+        qatorlar.append(f"{belgi} <b>{_esc(nom)}</b> — 👥 {soni} ta · 💰 {_som(summa)} so'm")
+    qatorlar += ["", f"💵 Jami hisoblangan: <b>{_som(jami)} so'm</b>"]
+    return "\n".join(qatorlar)
+
+
+def _promo_royxat_klaviatura():
+    tugmalar = [[InlineKeyboardButton(f"{'🟢' if faol else '🔴'} {nom}", callback_data=f"adm:promo_k:{kod}")]
+               for kod, nom, faol, _ in promo_store.linklar_royxati()]
+    tugmalar.append([InlineKeyboardButton("➕ Yangi link", callback_data="adm:promo_yangi")])
+    tugmalar.append([InlineKeyboardButton("◀️ Orqaga", callback_data="adm:menu")])
+    return InlineKeyboardMarkup(tugmalar)
+
+
+async def _promo_royxat_korsat(q):
+    await _ekran_yangila(q, _promo_royxat_matni(), _promo_royxat_klaviatura())
+
+
+def _promo_link_matni(ctx, kod):
+    link = promo_store.link_ol(kod)
+    if not link:
+        return "⚠️ Link topilmadi."
+    kelganlar = link["kelganlar"]
+    soni = len(kelganlar)
+    holat = "🟢 faol" if link["faol"] else "🔴 o'chirilgan (yangi kelganlar hisoblanmaydi)"
+    qatorlar = [
+        f"🔗 <b>{_esc(link['nom'])}</b> — {holat}", "",
+        f"<code>{_promo_link_url(ctx, kod)}</code>", "",
+        f"👥 Kelganlar: <b>{soni}</b> ta",
+        f"💰 Hisoblangan: <b>{_som(soni * promo_store.PROMO_HAQ)} so'm</b> "
+        f"({_som(promo_store.PROMO_HAQ)} × {soni})",
+    ]
+    if kelganlar:
+        qatorlar += ["", "<b>Oxirgi kelganlar:</b>"]
+        for i, k in enumerate(reversed(kelganlar[-30:]), 1):
+            username = f" @{_esc(k['username'])}" if k.get("username") else ""
+            vaqt = time.strftime("%d.%m %H:%M", time.localtime(k["vaqt"]))
+            qatorlar.append(f"{i}. {_esc(k['ism']) or 'Noma’lum'}{username} — {vaqt}")
+        if soni > 30:
+            qatorlar.append(f"… va yana {soni - 30} ta")
+    return "\n".join(qatorlar)
+
+
+def _promo_link_klaviatura(kod):
+    link = promo_store.link_ol(kod)
+    faol = bool(link and link["faol"])
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔴 O'chirish" if faol else "🟢 Qayta yoqish", callback_data=f"adm:promo_t:{kod}")],
+        [InlineKeyboardButton("◀️ Orqaga", callback_data="adm:promo")],
+    ])
+
+
+async def _promo_link_korsat(q, ctx, kod):
+    await _ekran_yangila(q, _promo_link_matni(ctx, kod), _promo_link_klaviatura(kod))
+
+
 # ---------- Matn kiritish talab qiluvchi tahrirlar ----------
 
 _TAHRIR_SOROVLARI = {
@@ -382,6 +460,20 @@ async def admin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _rasm_korsat(q)
     elif data == "rasm_prov":
         await _rasm_provider_korsat(q)
+    elif data == "promo":
+        await _promo_royxat_korsat(q)
+    elif data == "promo_yangi":
+        ctx.user_data["admin_tahrir"] = {"turi": "promo_nom"}
+        await ctx.bot.send_message(
+            q.message.chat_id,
+            "✍️ Targ'ibotchining <b>ismini</b> yuboring (faqat sizga ko'rinadi, masalan: «Ali»):",
+            parse_mode=ParseMode.HTML)
+    elif data.startswith("promo_k:"):
+        await _promo_link_korsat(q, ctx, data.split(":", 1)[1])
+    elif data.startswith("promo_t:"):
+        kod = data.split(":", 1)[1]
+        promo_store.faol_almashtir(kod)
+        await _promo_link_korsat(q, ctx, kod)
     elif data == "xabar":
         await _xabar_boshla(q, ctx)
     elif data == "xabar_tasdiq":
@@ -484,6 +576,15 @@ async def admin_matn_qabul(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         admin_store.rasm_sozlama_belgila(tahrir["maydon"], matn)
         await update.message.reply_text("✅ Sozlama yangilandi (darhol amal qiladi).")
         await update.message.reply_text(_rasm_matni(), parse_mode=ParseMode.HTML, reply_markup=_rasm_klaviatura())
+
+    elif turi == "promo_nom":
+        if not matn:
+            ctx.user_data["admin_tahrir"] = tahrir
+            return
+        kod = promo_store.link_yarat(matn)
+        await update.message.reply_text(
+            "✅ Link yaratildi:\n\n" + _promo_link_matni(ctx, kod),
+            parse_mode=ParseMode.HTML, reply_markup=_promo_link_klaviatura(kod))
 
     elif turi == "umumiy_xabar":
         if not matn:
