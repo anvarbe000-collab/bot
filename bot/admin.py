@@ -58,7 +58,8 @@ def _admin_bolsa(update: Update) -> bool:
 
 def _asosiy_klaviatura():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 Hisobot", callback_data="adm:hisobot")],
+        [InlineKeyboardButton("📊 Hisobot", callback_data="adm:hisobot"),
+         InlineKeyboardButton("💳 To'lovlar", callback_data="adm:tolovlar")],
         [InlineKeyboardButton("⚙️ Sozlamalar", callback_data="adm:sozlash")],
         [InlineKeyboardButton("📢 Umumiy xabar", callback_data="adm:xabar")],
         [InlineKeyboardButton("🔗 Targ'ibot linklari", callback_data="adm:promo")],
@@ -121,6 +122,39 @@ def _hisobot_matni():
 async def _hisobot_korsat(q):
     klav = InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Orqaga", callback_data="adm:menu")]])
     await _ekran_yangila(q, _hisobot_matni(), klav)
+
+
+# ---------- 2b) To'lovlar ro'yxati (kim sotib olgani) ----------
+
+async def _tolovlar_matni(ctx):
+    royxat = click_pay.tolov_royxati(30)
+    if not royxat:
+        return "💳 <b>To'lovlar</b>\n\nHozircha Click orqali tasdiqlangan to'lov yo'q."
+    qatorlar = ["💳 <b>Oxirgi to'lovlar</b> (Click tasdiqlagan)", ""]
+    for i, t in enumerate(royxat, 1):
+        if not t["ism"] and not t["username"]:
+            # Eski to'lov (ism saqlanmagan) — bir marta Telegramdan so'rab, yozib qo'yamiz
+            try:
+                chat = await ctx.bot.get_chat(t["chat_id"])
+                t["ism"] = getattr(chat, "full_name", None) or chat.first_name or ""
+                t["username"] = chat.username or ""
+                click_pay.foydalanuvchi_yoz(t["order_id"], t["ism"], t["username"])
+            except Exception:
+                pass
+        ism = _esc(t["ism"]) or "Noma’lum"
+        kim = (f"@{_esc(t['username'])}" if t["username"]
+               else f'<a href="tg://user?id={t["chat_id"]}">{ism}</a>')
+        if t["username"] and t["ism"]:
+            kim += f" ({ism})"
+        xizmat = admin_store.XIZMATLAR.get(t["mode"], t["mode"])
+        vaqt = time.strftime("%d.%m %H:%M", time.gmtime(t["vaqt"] + 5 * 3600))
+        qatorlar.append(f"{i}. {kim}\n    {xizmat} — <b>{_som(t['summa'])}</b> so'm · {vaqt}")
+    return "\n".join(qatorlar)
+
+
+async def _tolovlar_korsat(q, ctx):
+    klav = InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Orqaga", callback_data="adm:menu")]])
+    await _ekran_yangila(q, await _tolovlar_matni(ctx), klav)
 
 
 # ---------- 3) Sozlamalar — asosiy ----------
@@ -457,6 +491,8 @@ async def admin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _ekran_yangila(q, _asosiy_matni(), _asosiy_klaviatura())
     elif data == "hisobot":
         await _hisobot_korsat(q)
+    elif data == "tolovlar":
+        await _tolovlar_korsat(q, ctx)
     elif data == "sozlash":
         await _sozlash_korsat(q)
     elif data == "bepul_t":

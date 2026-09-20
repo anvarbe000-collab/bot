@@ -241,3 +241,20 @@ def tolov_statistika():
                 topshirilmagan += 1
     return {"xizmatlar": xizmatlar, "jami": tuple(jami), "bugun": tuple(bugun),
             "topshirilmagan": topshirilmagan}
+
+def foydalanuvchi_yoz(order_id, ism, username):
+    """To'lagan foydalanuvchining ismi/username'ini buyurtmaga saqlaydi
+    (admin «💳 To'lovlar» ro'yxatida ko'rsatish uchun)."""
+    _yozib_qoy(order_id, ism=str(ism or "")[:100], username=str(username or "")[:64])
+
+
+def tolov_royxati(limit=30):
+    """Click tasdiqlagan (to'langan) buyurtmalar, ENG YANGISI birinchi.
+    Har biri: order_id, chat_id, mode, summa, vaqt, ism, username."""
+    with _lock:
+        royxat = [{"order_id": k, "chat_id": b["chat_id"], "mode": b["mode"], "summa": b["summa"],
+                   "vaqt": b.get("tolandi_vaqt") or b.get("yaratilgan", 0),
+                   "ism": b.get("ism", ""), "username": b.get("username", "")}
+                  for k, b in _buyurtmalar.items() if b.get("holat") == "tolandi"]
+    royxat.sort(key=lambda x: x["vaqt"], reverse=True)
+    return royxat[:limit]

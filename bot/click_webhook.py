@@ -59,6 +59,14 @@ async def _xizmatni_topshir(application, buyurtma):
     mode = buyurtma["mode"]
     talaba_ud = application.user_data[chat_id]
     bajaruvchi = _TOLOV_BAJARUVCHI.get(mode)
+    # Kim to'laganini (username/ism) buyurtmaga yozib qo'yamiz — admin ko'rishi uchun.
+    try:
+        chat = await application.bot.get_chat(chat_id)
+        click_pay.foydalanuvchi_yoz(
+            buyurtma["order_id"],
+            getattr(chat, "full_name", None) or chat.first_name, chat.username)
+    except Exception:
+        log.warning("To'lagan foydalanuvchi ma'lumotini olib bo'lmadi (chat_id=%s)", chat_id)
     referrer_id, bonus_berildi = referal_store.birinchi_tolov_va_bonus_qayta_ishla(chat_id)
     if bonus_berildi:
         yangi_balans = referal_store.balans_ol(referrer_id)
