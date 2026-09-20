@@ -67,6 +67,7 @@ _DEFAULT = {
     "ai": {},              # modul -> {"base_url":.., "key":.., "model":..}
     "rasm": {},             # {"provider":.., "base":.., "model":.., "key":.., "model_g":.., "together_key":.., "together_model":..}
     "bepul_slayt_id_lar": [],  # bepul (3 varoqlik, birinchi marta) slaytdan foydalangan foydalanuvchi ID'lari
+    "bepul_sinov_yoqilgan": True,   # admin yoqadi/o'chiradi: 3 varoqli BEPUL sinov umuman berilsinmi
 }
 
 
@@ -136,6 +137,21 @@ def tashrif_qayd_et(foydalanuvchi_id):
 
 
 # ---------- bepul sinov (birinchi marta, 3 varoqlik slayt) ----------
+
+def bepul_sinov_yoqilganmi():
+    """Admin panelda 3 varoqli bepul sinov YOQILGANmi (standart: yoqilgan)."""
+    with _lock:
+        return bool(_store.get("bepul_sinov_yoqilgan", True))
+
+
+def bepul_sinov_almashtir():
+    """Bepul sinovni yoqadi/o'chiradi, YANGI holatni qaytaradi."""
+    with _lock:
+        yangi = not bool(_store.get("bepul_sinov_yoqilgan", True))
+        _store["bepul_sinov_yoqilgan"] = yangi
+        _saqla()
+        return yangi
+
 
 def bepul_slayt_ishlatganmi(foydalanuvchi_id):
     """Bu foydalanuvchi bepul (3 varoqlik, faqat BIRINCHI marta) slaytdan

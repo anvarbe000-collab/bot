@@ -1038,7 +1038,8 @@ async def _shablon_tanlandi(update: Update, ctx: ContextTypes.DEFAULT_TYPE, key:
     nom = TEMPLATES.get(key, {}).get("nom", key)
     chat_id = update.effective_chat.id
     pullik = admin_store.premium_yoqilganmi("slayt")
-    bepul_mavjudmi = pullik and not admin_store.bepul_slayt_ishlatganmi(chat_id)
+    bepul_mavjudmi = (pullik and admin_store.bepul_sinov_yoqilganmi()
+                      and not admin_store.bepul_slayt_ishlatganmi(chat_id))
     narx = admin_store.narx_ol("slayt", config.TOLOV_SUM) if pullik else 0
     matn = f"✨ «{nom}» tanlandi.\n\n📄 Nechta varaq bo'lsin?"
     if bepul_mavjudmi:
@@ -1516,6 +1517,7 @@ async def _taqdimotni_yarat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     if (ctx.user_data.get("jami") == VARAQ_BEPUL_N
             and admin_store.premium_yoqilganmi("slayt")
+            and admin_store.bepul_sinov_yoqilganmi()
             and not admin_store.bepul_slayt_ishlatganmi(chat_id)):
         ctx.user_data["bepul_sinov"] = True
         await _pptx_render_va_yubor(ctx, chat_id)

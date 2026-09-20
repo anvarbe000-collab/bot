@@ -126,9 +126,11 @@ async def _hisobot_korsat(q):
 # ---------- 3) Sozlamalar — asosiy ----------
 
 def _sozlash_klaviatura():
+    bepul_belgi = "✅ Yoqilgan" if admin_store.bepul_sinov_yoqilganmi() else "❌ O'chirilgan"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💰 Narxlar", callback_data="adm:narxlar"),
          InlineKeyboardButton("🔓 Premium yoqish/o'chirish", callback_data="adm:premium")],
+        [InlineKeyboardButton(f"🎁 3 varoq bepul: {bepul_belgi}", callback_data="adm:bepul_t")],
         [InlineKeyboardButton("🤖 AI sozlamalari", callback_data="adm:ai"),
          InlineKeyboardButton("🖼 Rasm sozlamalari", callback_data="adm:rasm")],
         [InlineKeyboardButton("◀️ Orqaga", callback_data="adm:menu")],
@@ -456,6 +458,9 @@ async def admin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif data == "hisobot":
         await _hisobot_korsat(q)
     elif data == "sozlash":
+        await _sozlash_korsat(q)
+    elif data == "bepul_t":
+        admin_store.bepul_sinov_almashtir()
         await _sozlash_korsat(q)
     elif data == "narxlar":
         await _narxlar_korsat(q)
