@@ -30,6 +30,18 @@ QAT'IY QOIDALAR:
   cards/stats ishlat (ularda rasm shart emas).
 - RAQAM: faqat aniq bilgan faktni yoz. Bilmasang "stats" ishlatma.
 - "theme" (shablon) YOZMA — foydalanuvchi tanlaydi.
+- UZUNLIK CHEGARALARI (QAT'IY — oshsa matn kesib tashlanadi, CHIROYSIZ bo'ladi,
+  shu sabab HAR DOIM shu chegara ICHIDA, lekin ma'noli va TO'LIQ gapda yoz):
+  * title (deck va slayd): 45 belgigacha
+  * tag: 18 belgigacha
+  * subtitle, intro: 110 belgigacha
+  * image_text "points": har biri 70 belgigacha, KO'PI BILAN 3 ta
+  * cards "h" (sarlavha): 24 belgigacha, "d" (izoh): 75 belgigacha, KO'PI BILAN 4 ta karta
+  * icons "h": 32 belgigacha, "d": 90 belgigacha, KO'PI BILAN 4 ta qator
+  * stats "num": 6 belgigacha (masalan "42%", "3x"), "label": 40 belgigacha, KO'PI BILAN 3 ta
+  * steps: har biri 70 belgigacha, KO'PI BILAN 5 ta
+  * callout: 90 belgigacha
+  * conclusion "points": har biri 60 belgigacha, KO'PI BILAN 3 ta; "text": 90 belgigacha
 - RASM TAVSIFI ("image" maydoni): HAR DOIM INGLIZ TILIDA yoz (rasm modeli
   o'zbekchani tushunmaydi). Aniq, batafsil va konkret bo'lsin: predmet + sahna
   + uslub. Slayt mavzusiga TO'G'RIDAN-TO'G'RI mos bo'lsin, mavhum yoki qisqa emas.

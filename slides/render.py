@@ -159,6 +159,7 @@ def _bg(sl, c):
 
 
 def _tag(sl, c, x, y, text):
+    text = _clip(text, 22)
     st = c["tag"]
     if st == "plain" or not text:
         if text:
@@ -194,33 +195,51 @@ def _tag(sl, c, x, y, text):
 
 
 def _head(sl, c, tag, title, n=1):
-    """Sarlavha bloki — marker uslubiga qarab (har shablonda boshqacha)."""
+    """Sarlavha bloki — marker uslubiga qarab (har shablonda boshqacha).
+    Title XAVFSIZ uzunlikka qisqartiriladi VA haqiqiy balandligi HISOBLANADI —
+    qaytarilgan qiymat (dyuymda, sarlavha TUGAYDIGAN joy) chaqiruvchi
+    funksiyalarga (r_bullets, r_cards, r_icons, r_steps, r_callout) KASKADLI
+    joylashuv uchun kerak: uzun sarlavha 2 qatorga yozilsa, pastdagi "intro"
+    yoki birinchi qator ENDI avtomatik pastroqqa suriladi (ustma-ust tushmaydi)."""
+    title = _clip(title, 70)
     m = c["marker"]
     tx = Inches(0.9)
     if m == "tagbar":
         _tag(sl, c, Inches(0.9), Inches(0.6), tag)
         _rect(sl, Inches(0.9), Inches(1.08), Inches(0.07), Inches(0.6), c["accent"])
-        _t(sl, Inches(1.12), Inches(1.03), Inches(11), Inches(0.85),
+        th = _lines_h_in(title, 30, 10.8, 2, 1.1)
+        box_h = max(0.85, th + 0.1)
+        _t(sl, Inches(1.12), Inches(1.03), Inches(11), Inches(box_h),
            [(title, 30, c["head_bold"], c["ink"], c["head"], 0)], anchor=MSO_ANCHOR.MIDDLE)
+        bottom = 1.03 + box_h
     elif m == "eyebrow":
         _rect(sl, Inches(0.9), Inches(0.72), Inches(0.4), Pt(2), c["accent"])
         _t(sl, Inches(1.45), Inches(0.6), Inches(6), Inches(0.3),
-           [(tag.upper(), 11, True, c["accent"], c["body"], 0)], anchor=MSO_ANCHOR.MIDDLE)
-        _t(sl, Inches(0.9), Inches(1.05), Inches(11), Inches(0.9),
+           [(_clip(tag, 22).upper(), 11, True, c["accent"], c["body"], 0)], anchor=MSO_ANCHOR.MIDDLE)
+        th = _lines_h_in(title, 32, 10.9, 2, 1.1)
+        _t(sl, Inches(0.9), Inches(1.05), Inches(11), Inches(th + 0.1),
            [(title, 32, c["head_bold"], c["ink"], c["head"], 0)])
+        bottom = 1.05 + th
     elif m == "number":
         _t(sl, Inches(1.3), Inches(0.85), Inches(2), Inches(0.4),
            [(f"{n:02d}", 13, False, c["accent"], c["head"], 0)])
-        _t(sl, Inches(1.3), Inches(1.3), Inches(10.5), Inches(0.9),
+        th = _lines_h_in(title, 30, 10.3, 2, 1.1)
+        _t(sl, Inches(1.3), Inches(1.3), Inches(10.5), Inches(th + 0.1),
            [(title, 30, c["head_bold"], c["ink"], c["head"], 0)])
+        bottom = 1.3 + th
     elif m == "dot":
         _tag(sl, c, Inches(0.9), Inches(0.6), tag)
-        _t(sl, Inches(0.9), Inches(1.05), Inches(11), Inches(0.9),
+        th = _lines_h_in(title, 30, 10.8, 2, 1.1)
+        _t(sl, Inches(0.9), Inches(1.05), Inches(11), Inches(th + 0.1),
            [(title, 30, c["head_bold"], c.get("dark_c", c["ink"]), c["head"], 0)])
-    elif m == "neon":
+        bottom = 1.05 + th
+    else:  # neon
         _tag(sl, c, Inches(0.9), Inches(0.55), tag)
-        _t(sl, Inches(0.9), Inches(1.0), Inches(11.5), Inches(0.85),
+        th = _lines_h_in(title, 28, 11.3, 2, 1.1)
+        _t(sl, Inches(0.9), Inches(1.0), Inches(11.5), Inches(th + 0.1),
            [(title, 28, True, c["accent"], c["head"], 0)])
+        bottom = 1.0 + th
+    return bottom
 
 
 def _content_x(c):
@@ -247,12 +266,23 @@ def _image(sl, c, mazmun, x, y, w, h, path=None):
         _rect(sl, x, y, w, h, c["img_bg"], rounded=(not c["dark"]), radius=0.04,
               line=(ic if not c["dark"] else None), lw=1.1)
     _t(sl, x + Inches(0.3), y + h/2 - Inches(0.5), w - Inches(0.6), Inches(1.0),
-       [(label, 12, True, ic, c["head"], 4), (mazmun, 10, False, c["muted"], c["body"], 0)],
+       [(label, 12, True, ic, c["head"], 4), (_clip(mazmun, 90), 10, False, c["muted"], c["body"], 0)],
        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, line=1.2)
 
 
 def _card(sl, c, x, y, w, h, title, desc, idx=0):
-    """Karta — card uslubiga qarab."""
+    """Karta — card uslubiga qarab. Sarlavha/izoh uzunligi SHU YERDA, haqiqiy
+    w/h ga qarab HISOBLAB, xavfsiz chegaraga qisqartiriladi — shu sabab
+    karta matni hech qachon kartadan CHIQIB KETMAYDI yoki keyingi qatordagi
+    kartaga ustma-ust TUSHMAYDI (fixed joylashuvda eng ko'p uchraydigan xato)."""
+    w_in = w / 914400.0; h_in = h / 914400.0
+    # Sarlavha BITTA QATORGA sig'adigan uzunlikka qisqartiriladi (2 qatorga
+    # yozilsa, pastdagi izoh uchun ajratilgan FIKSIRLANGAN joyga kirib,
+    # ustma-ust tushib qolardi — izoh bloki sarlavha balandligiga qarab
+    # KASKADLI emas, shu sabab sarlavha 1 qatordan OSHMASLIGI SHART).
+    title = _clip(title, max(14, int((w_in - 0.6) / (18 * 0.0122 * 1.15))))
+    desc_lines = max(2, int((h_in - 0.9) / (16 * 1.25 / 72)))
+    desc = _clip(desc, max(24, int((w_in - 0.6) / (16 * 0.0122)) * desc_lines))
     st = c["card"]
     dark_txt = "FFFFFF" if c["dark"] else c["ink"]
     if st == "border":
@@ -322,7 +352,7 @@ def _bg_image_title(sl, c, deck):
     _rect_a(sl, 0, 0, W, H, "0A0A0F", 50000)          # qoraytiruvchi qatlam (50%)
     # matn (oq, chapda)
     tx = Inches(0.9)
-    tag = deck.get("tag", "")
+    tag = _clip(deck.get("tag", ""), 22)
     if c["tag"] == "neon" and tag:
         _t(sl, tx, Inches(2.7), Inches(8), Inches(0.4),
            [(f"// {tag.upper()}", 12, True, c["accent"], c["head"], 0)])
@@ -332,13 +362,15 @@ def _bg_image_title(sl, c, deck):
         _t(sl, tx, Inches(2.7), wtag, Inches(0.36),
            [(tag.upper(), 10, True, "FFFFFF", c["head"], 0)],
            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    tsz = _tsize(deck["title"], 52, 44, 34)
-    _t(sl, tx, Inches(3.3), Inches(11.5), Inches(2.4),
-       [(deck["title"], tsz, c["head_bold"], "FFFFFF", c["head"], 0)], line=1.03)
-    _th = _est_lines(deck["title"], tsz, 11.0) * (tsz * 1.2 / 72.0)
+    title = _clip(deck.get("title", ""), 70)
+    tsz = _tsize(title, 52, 44, 34)
+    _th = _lines_h_in(title, tsz, 11.0, 3, 1.03)
+    _t(sl, tx, Inches(3.3), Inches(11.5), Inches(_th + 0.15),
+       [(title, tsz, c["head_bold"], "FFFFFF", c["head"], 0)], line=1.03)
     if deck.get("subtitle"):
-        _t(sl, tx + Inches(0.02), Inches(3.3 + _th + 0.3), Inches(9.5), Inches(1.4),
-           [(deck["subtitle"], 18, False, "E8E8EC", c["body"], 0)], line=1.4)
+        suby = min(3.3 + _th + 0.3, 5.6)
+        _t(sl, tx + Inches(0.02), Inches(suby), Inches(9.5), Inches(1.6),
+           [(_clip(deck["subtitle"], 150), 18, False, "E8E8EC", c["body"], 0)], line=1.4)
 
 
 
@@ -351,6 +383,36 @@ def _est_lines(title, size, width_in):
     import math
     cpl = max(6, int(width_in / (size * 0.0122)))
     return max(1, math.ceil(len(title or "") / cpl))
+
+
+def _line_h(size, mult=1.2):
+    """Bitta qator balandligi (dyuymda) — kaskadli (bir-biridan keyin
+    joylashadigan) matn bloklari uchun KEYINGI blok Y koordinatasini
+    HISOBLAB chiqarish uchun (ustiga tushib qolish — overlap — oldini oladi,
+    xuddi sarlavha/subtitle juftligida qilingani kabi, boshqa barcha matn
+    bloklariga ham qo'llaniladi)."""
+    return size * mult / 72.0
+
+
+def _clip(text, max_chars):
+    """Matnni XAVFSIZ uzunlikka qisqartiradi (so'z chegarasida, "…" bilan) —
+    AI juda uzun matn qaytarsa ham, slaytdagi qutidan CHIQIB KETMASLIGI
+    (boshqa elementlarga ustma-ust tushmasligi) uchun SO'NGGI himoya qatlami."""
+    text = (text or "").strip()
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars].rsplit(" ", 1)[0]
+    if len(cut) < max_chars * 0.6:
+        cut = text[:max_chars]
+    return cut.rstrip(",.;:—- ") + "…"
+
+
+def _lines_h_in(text, size, width_in, max_lines, mult=1.2):
+    """Matn necha qatorga yozilishini baholab, UMUMIY balandligini (dyuymda)
+    qaytaradi — max_lines bilan yuqori chegaralanadi (keyingi blok juda pastga
+    tushib ketmasin deb)."""
+    n = min(_est_lines(text, size, width_in), max_lines)
+    return n * _line_h(size, mult)
 
 
 def r_title(sl, c, deck):
@@ -377,23 +439,25 @@ def r_title(sl, c, deck):
                    H if (c["dark"] and c["bg"] == "gradient") else Inches(5.7), path=ipath)
     marker = c["marker"]
     y0 = Inches(2.6)
+    title = _clip(deck.get("title", ""), 60)
     if marker == "number":
-        _t(sl, tx, y0, tw, Inches(0.4), [(deck.get("tag", "").upper(), 11, False, c["accent"], c["head"], 0)])
+        _t(sl, tx, y0, tw, Inches(0.4), [(_clip(deck.get("tag", ""), 22).upper(), 11, False, c["accent"], c["head"], 0)])
         _rect(sl, tx, y0 + Inches(0.42), Inches(0.5), Pt(2), c["accent"])
-        tsz = _tsize(deck["title"], 46, 40, 32)
-        _t(sl, tx, y0 + Inches(0.7), tw, Inches(2.6), [(deck["title"], tsz, c["head_bold"], c["ink"], c["head"], 0)], line=1.04)
-        _th = _est_lines(deck["title"], tsz, 6.0) * (tsz * 1.2 / 72.0)
-        suby = y0 + Inches(0.7 + _th + 0.35)
+        tsz = _tsize(title, 46, 40, 32)
+        _th = _lines_h_in(title, tsz, 6.0, 3, 1.04)
+        _t(sl, tx, y0 + Inches(0.7), tw, Inches(_th + 0.15), [(title, tsz, c["head_bold"], c["ink"], c["head"], 0)], line=1.04)
+        suby_in = 2.6 + 0.7 + _th + 0.35
     else:
         _tag(sl, c, tx, y0, deck.get("tag", ""))
-        tsz = _tsize(deck["title"], 48, 40, 32)
-        _t(sl, tx, y0 + Inches(0.55), tw, Inches(2.7),
-           [(deck["title"], tsz, c["head_bold"], c["ink"] if c["nom"] != "Neon" else c["accent"], c["head"], 0)], line=1.04)
-        _th = _est_lines(deck["title"], tsz, tw.inches - 0.2) * (tsz * 1.2 / 72.0)
-        suby = y0 + Inches(0.55 + _th + 0.35)
+        tsz = _tsize(title, 48, 40, 32)
+        _th = _lines_h_in(title, tsz, tw.inches - 0.2, 3, 1.04)
+        _t(sl, tx, y0 + Inches(0.55), tw, Inches(_th + 0.15),
+           [(title, tsz, c["head_bold"], c["ink"] if c["nom"] != "Neon" else c["accent"], c["head"], 0)], line=1.04)
+        suby_in = 2.6 + 0.55 + _th + 0.35
     if deck.get("subtitle"):
-        _t(sl, tx + Inches(0.02), suby, tw - Inches(0.2), Inches(1.6),
-           [(deck["subtitle"], 19, False, c["muted"], c["body"], 0)], line=1.4)
+        suby_in = min(suby_in, 6.0)
+        _t(sl, tx + Inches(0.02), Inches(suby_in), tw - Inches(0.2), Inches(1.6),
+           [(_clip(deck["subtitle"], 150), 19, False, c["muted"], c["body"], 0)], line=1.4)
 
 
 def r_image_text(sl, c, s, n, left=False):
@@ -415,16 +479,31 @@ def r_image_text(sl, c, s, n, left=False):
     tx = Inches(5.4) if left else Inches(0.9)
     tw = Inches(7.0)
     _tag(sl, c, tx, Inches(0.85), s.get("tag", ""))
-    _t(sl, tx, Inches(1.4), tw, Inches(1.0),
-       [(s["title"], 31, c["head_bold"], c["ink"], c["head"], 0)], line=1.05)
-    y = Inches(2.9)
-    if s.get("intro"):
-        _t(sl, tx, y, tw - Inches(0.3), Inches(1.2),
-           [(s["intro"], 17, False, c["muted"], c["body"], 0)], line=1.35)
-        y = Inches(3.75)
-    box = sl.shapes.add_textbox(tx, y, tw - Inches(0.3), Inches(3.0))
+
+    # KASKADLI joylashuv — har blok O'ZIDAN OLDINGI blokning HAQIQIY (hisoblangan)
+    # balandligiga qarab boshlanadi, FIKSIRLANGAN Y emas — shu sabab uzun sarlavha/
+    # kirish matni KEYINGI blokka hech qachon ustma-ust tushmaydi (eski versiyada
+    # sarlavha 3 qatorga yozilsa, "intro" ustiga tushib qolishi mumkin edi).
+    title = _clip(s.get("title", ""), 72)
+    title_h = _lines_h_in(title, 31, tw.inches - 0.1, 3, 1.05)
+    _t(sl, tx, Inches(1.4), tw, Inches(title_h + 0.1),
+       [(title, 31, c["head_bold"], c["ink"], c["head"], 0)], line=1.05)
+    y = 1.4 + title_h + 0.22
+
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 170)
+        intro_h = _lines_h_in(intro, 17, tw.inches - 0.3, 4, 1.35)
+        _t(sl, tx, Inches(y), tw - Inches(0.3), Inches(intro_h + 0.1),
+           [(intro, 17, False, c["muted"], c["body"], 0)], line=1.35)
+        y = y + intro_h + 0.3
+
+    box_h = max(Inches(1.3), H - Inches(y) - Inches(0.35))
+    box = sl.shapes.add_textbox(tx, Inches(y), tw - Inches(0.3), box_h)
     tf = box.text_frame; tf.word_wrap = True
-    for i, pt in enumerate(s.get("points", [])):
+    points = [p for p in s.get("points", []) if p][:3]
+    for i, pt in enumerate(points):
+        pt = _clip(pt, 85)
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.space_after = Pt(11); p.line_spacing = 1.25
         rm = p.add_run(); rm.text = "—  "
@@ -435,17 +514,27 @@ def r_image_text(sl, c, s, n, left=False):
 
 
 def r_bullets(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
-    x = _content_x(c); y = Inches(2.05)
-    if s.get("intro"):
-        _t(sl, x + (Inches(0.22) if c["marker"] == "tagbar" else Inches(0)), y,
-           Inches(11), Inches(0.9), [(s["intro"], 16, False, c["muted"], c["body"], 0)], line=1.3)
-        y = Inches(2.95)
-    bx = x + (Inches(0.22) if c["marker"] == "tagbar" else Inches(0))
-    y = y + Inches(0.5)
-    box = sl.shapes.add_textbox(bx, y, Inches(10.8), Inches(4.0))
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
+    x = _content_x(c)
+    bar = Inches(0.22) if c["marker"] == "tagbar" else 0
+    bx = x + bar
+    bw_in = 11.0 - bar / 914400
+    y = max(2.05, head_bottom + 0.3)
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 150)
+        _t(sl, bx, Inches(y), Inches(bw_in), Inches(1.5),
+           [(intro, 16, False, c["muted"], c["body"], 0)], line=1.3)
+        y = y + _lines_h_in(intro, 16, bw_in, 4, 1.3) + 0.35
+    else:
+        y = y + 0.55
+    box_h = max(Inches(1.5), H - Inches(y) - Inches(0.4))
+    box = sl.shapes.add_textbox(bx, Inches(y), Inches(10.8), box_h)
     tf = box.text_frame; tf.word_wrap = True
-    for i, pt in enumerate(s.get("points", [])):
+    points = [p for p in s.get("points", []) if p][:5]
+    for i, pt in enumerate(points):
+        pt = _clip(pt, 110)
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.space_after = Pt(16); p.line_spacing = 1.25
         rm = p.add_run(); rm.text = "—  "
@@ -456,54 +545,92 @@ def r_bullets(sl, c, s, n):
 
 
 def r_cards(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
     x0 = _content_x(c)
-    if s.get("intro"):
-        _t(sl, x0, Inches(1.95), Inches(11.4), Inches(0.6),
-           [(s["intro"], 16, False, c["muted"], c["body"], 0)], line=1.3)
-    cards = s.get("cards", [])[:4]
-    y = Inches(2.75); cw = Inches(5.7); ch = Inches(2.25); gap = Inches(0.45)
+    y_in = max(1.95, head_bottom + 0.25)
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 140)
+        _t(sl, x0, Inches(y_in), Inches(11.4), Inches(0.8),
+           [(intro, 16, False, c["muted"], c["body"], 0)], line=1.3)
+        y_in = y_in + _lines_h_in(intro, 16, 11.4, 3, 1.3) + 0.35
+    else:
+        y_in = max(2.75, y_in + 0.3)
+    cards = [cd for cd in s.get("cards", []) if cd.get("h")][:4]
+    nn = len(cards)
+    if not nn:
+        return
+    y = Inches(y_in)
     if c["card"] == "stagger":
+        cw = Inches(5.7)
         pos = [(x0, y), (Emu(x0+cw), Emu(y+Inches(0.35))),
                (x0, Emu(y+Inches(2.0))), (Emu(x0+cw), Emu(y+Inches(2.35)))]
         for i, cd in enumerate(cards):
-            xx, yy = pos[i]; _card(sl, c, xx, yy, cw, Inches(1.7), cd["h"], cd["d"], i)
+            xx, yy = pos[i]; _card(sl, c, xx, yy, cw, Inches(1.7), cd["h"], cd.get("d", ""), i)
         return
+    if nn == 3:
+        # Generik 2-ustunli panjarada 3 ta karta NOQULAY ko'rinadi (2 tepada +
+        # 1 yolg'iz pastda, chapga tirilib) — BALANSLI ko'rinish uchun 3
+        # tasini ham BITTA qatorga teng taqsimlab joylaymiz.
+        gap = Inches(0.35)
+        cw = Emu(int((Inches(11.5) - gap * 2) / 3))
+        ch = Inches(3.6)
+        for i, cd in enumerate(cards):
+            xx = Emu(x0 + (cw + gap) * i)
+            _card(sl, c, xx, y, cw, ch, cd["h"], cd.get("d", ""), i)
+        return
+    cw = Inches(5.7); ch = Inches(2.25); gap = Inches(0.45)
     for i, cd in enumerate(cards):
         col = i % 2; row = i // 2
         x = Emu(x0 + (cw + gap) * col)
         yy = Emu(y + (ch + Inches(0.4)) * row)
-        _card(sl, c, x, yy, cw, ch, cd["h"], cd["d"], i)
+        _card(sl, c, x, yy, cw, ch, cd["h"], cd.get("d", ""), i)
 
 
 def r_icons(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
     x = _content_x(c) + (Inches(0.22) if c["marker"] == "tagbar" else Inches(0))
-    y = Inches(2.35)
-    if s.get("intro"):
-        _t(sl, x, Inches(2.05), Inches(11), Inches(0.6),
-           [(s["intro"], 16, False, c["muted"], c["body"], 0)], line=1.3)
-        y = Inches(3.05)
-    for row in s.get("rows", [])[:4]:
-        _icon(sl, row.get("icon"), x, y, Inches(0.85),
+    y = max(2.35, head_bottom + 0.3)
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 140)
+        _t(sl, x, Inches(y), Inches(11), Inches(0.8),
+           [(intro, 16, False, c["muted"], c["body"], 0)], line=1.3)
+        y = y + _lines_h_in(intro, 16, 11.0, 3, 1.3) + 0.35
+    rows = [r for r in s.get("rows", []) if r.get("h")][:4]
+    tw_in = 9.8
+    for row in rows:
+        # Qator sarlavhasi (h_txt) BITTA QATORGA sig'adigan uzunlikka
+        # qisqartiriladi — izoh (d_txt) FIKSIRLANGAN y+0.45 joyda boshlanadi,
+        # sarlavha 2 qatorga yozilsa aynan o'sha joyga kirib ketardi.
+        h_txt = _clip(row["h"], max(14, int(tw_in / (18 * 0.0122 * 1.15))))
+        d_txt = _clip(row.get("d", ""), 130)
+        d_h = _lines_h_in(d_txt, 16, tw_in, 4, 1.2)
+        _icon(sl, row.get("icon"), x, Inches(y), Inches(0.85),
               tint_box=(c["accent"], c.get("accent2", c["accent"])),
               shape=c.get("icon_shape", "square"))
-        _t(sl, x + Inches(1.15), y - Inches(0.02), Inches(10), Inches(0.5),
-           [(row["h"], 18, True, c["ink"], c["head"], 0)])
-        _t(sl, x + Inches(1.15), y + Inches(0.45), Inches(9.8), Inches(0.55),
-           [(row["d"], 16, False, c["muted"], c["body"], 0)], line=1.2)
-        y = Emu(y + Inches(1.35))
+        _t(sl, x + Inches(1.15), Inches(y - 0.02), Inches(10), Inches(0.5),
+           [(h_txt, 18, True, c["ink"], c["head"], 0)])
+        _t(sl, x + Inches(1.15), Inches(y + 0.45), Inches(tw_in), Inches(d_h + 0.1),
+           [(d_txt, 16, False, c["muted"], c["body"], 0)], line=1.2)
+        # QATOR balandligi MATN uzunligiga qarab DINAMIK — ikonka (0.85in) yoki
+        # matn balandligidan (qaysi kattaroq) + bo'sh joy. Shu sabab uzun izoh
+        # KEYINGI ikonka/matnga hech qachon ustma-ust TUSHMAYDI.
+        y = y + max(0.85, 0.45 + d_h) + 0.3
 
 
 def r_stats(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
     x0 = _content_x(c)
-    stats = s.get("stats", [])[:3]; nn = len(stats)
+    stats = [stt for stt in s.get("stats", []) if stt.get("num")][:3]; nn = len(stats)
     if not nn: return
     total = Inches(11.5); gap = Inches(0.4); cw = int((total - gap*(nn-1))/nn)
-    x = x0; y = Inches(3.15); st = c["stat"]
+    x = x0; y = Inches(max(3.15, head_bottom + 0.3)); st = c["stat"]
     for i, stt in enumerate(stats):
-        num, lab = stt["num"], stt["label"]
+        num, lab = _clip(stt["num"], 7), _clip(stt.get("label", ""), 64)
         if st == "plain":
             _t(sl, x, y, cw, Inches(1.0), [(num, 54, c["head_bold"], c["ink"], c["head"], 0)])
             _rect(sl, x, y + Inches(1.15), Inches(0.5), Pt(2), c["accent"])
@@ -530,37 +657,52 @@ def r_stats(sl, c, s, n):
 
 
 def r_steps(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
     x = _content_x(c) + (Inches(0.22) if c["marker"] == "tagbar" else Inches(0))
-    y = Inches(2.5)
-    if s.get("intro"):
-        _t(sl, x, Inches(2.05), Inches(11), Inches(0.6),
-           [(s["intro"], 16, False, c["muted"], c["body"], 0)], line=1.3)
-        y = Inches(3.15)
-    for i, stp in enumerate(s.get("steps", [])[:5], 1):
-        o = _oval(sl, x, y, Inches(0.72), c["accent"])
+    y = max(2.5, head_bottom + 0.3)
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 140)
+        _t(sl, x, Inches(y), Inches(11), Inches(0.8),
+           [(intro, 16, False, c["muted"], c["body"], 0)], line=1.3)
+        y = max(3.15, y + _lines_h_in(intro, 16, 11.0, 3, 1.3) + 0.35)
+    steps = [st for st in s.get("steps", []) if st][:5]
+    tw_in = 10.0
+    for i, stp in enumerate(steps, 1):
+        stp = _clip(stp, 120)
+        o = _oval(sl, x, Inches(y), Inches(0.72), c["accent"])
         tp = o.text_frame.paragraphs[0]; tp.alignment = PP_ALIGN.CENTER
         rr = tp.add_run(); rr.text = str(i)
         rr.font.size = Pt(26); rr.font.bold = True; rr.font.name = c["head"]
         rr.font.color.rgb = _rgb("FFFFFF")
-        _t(sl, x + Inches(1.1), y + Inches(0.02), Inches(10.0), Inches(0.7),
+        _t(sl, x + Inches(1.1), Inches(y + 0.02), Inches(tw_in), Inches(1.3),
            [(stp, 18, False, c["ink"], c["body"], 0)], anchor=MSO_ANCHOR.MIDDLE, line=1.15)
-        y = Emu(y + Inches(1.15))
+        # Bosqich matni uzun bo'lsa (2+ qator) KEYINGI bosqich doirasi bilan
+        # ustma-ust tushmasin deb, qator balandligi MATNGA qarab o'sadi.
+        txt_h = _lines_h_in(stp, 18, tw_in, 5, 1.15)
+        y = y + max(0.72, txt_h) + 0.35
 
 
 def r_callout(sl, c, s, n):
-    _bg(sl, c); _head(sl, c, s.get("tag", ""), s["title"], n)
+    _bg(sl, c)
+    head_bottom = _head(sl, c, s.get("tag", ""), s["title"], n)
     x0 = _content_x(c)
-    if s.get("intro"):
-        _t(sl, x0, Inches(2.05), Inches(11.2), Inches(1.3),
-           [(s["intro"], 17, False, c["muted"] if not c["dark"] else c["ink"], c["body"], 0)], line=1.35)
-    y = Inches(3.9)
+    y_in = max(2.05, head_bottom + 0.3)
+    intro = s.get("intro")
+    if intro:
+        intro = _clip(intro, 160)
+        _t(sl, x0, Inches(y_in), Inches(11.2), Inches(1.5),
+           [(intro, 17, False, c["muted"] if not c["dark"] else c["ink"], c["body"], 0)], line=1.35)
+        y_in = y_in + _lines_h_in(intro, 17, 11.2, 4, 1.35) + 0.35
+    y = Inches(max(3.9, y_in))
     bg = c.get("soft") or c["card_bg"]
     _rect(sl, x0, y, Inches(11.5), Inches(2.1), bg, rounded=True, radius=0.06)
     _rect(sl, x0, y + Inches(0.3), Inches(0.08), Inches(1.3), c["accent"])
     txtcol = c["ink"]
+    callout = _clip(s.get("callout", ""), 110)
     _t(sl, Emu(x0 + Inches(0.35)), y + Inches(0.45), Inches(10.8), Inches(1.1),
-       [(s.get("callout", ""), 19, True, txtcol, c["body"], 0)], line=1.3)
+       [(callout, 19, True, txtcol, c["body"], 0)], line=1.3)
 
 
 DISPATCH = {"bullets": r_bullets, "cards": r_cards, "icons": r_icons,
@@ -575,24 +717,26 @@ def r_conclusion(sl, c, concl, n):
     ink = "FFFFFF" if dark else c["ink"]
     # katta sarlavha
     _t(sl, Inches(0.9), Inches(0.85), Inches(11.5), Inches(1.0),
-       [(concl.get("title", "Xulosa"), 40, c["head_bold"], c["accent"], c["head"], 0)])
+       [(_clip(concl.get("title", "Xulosa"), 50), 40, c["head_bold"], c["accent"], c["head"], 0)])
     _rect(sl, Inches(0.9), Inches(1.85), Inches(1.0), Pt(3), c["accent"])
     # asosiy fikrlar (checkmark bilan)
-    points = concl.get("points", [])
-    y = Inches(2.4)
-    for pt in points[:4]:
-        o = _oval(sl, Inches(0.9), y + Inches(0.03), Inches(0.42), c["accent"])
+    points = [p for p in concl.get("points", []) if p][:3]
+    y = 2.4
+    for pt in points:
+        pt = _clip(pt, 90)
+        o = _oval(sl, Inches(0.9), Inches(y + 0.03), Inches(0.42), c["accent"])
         tp = o.text_frame.paragraphs[0]; tp.alignment = PP_ALIGN.CENTER
         rr = tp.add_run(); rr.text = "✓"
         rr.font.size = Pt(16); rr.font.bold = True; rr.font.name = c["head"]
         rr.font.color.rgb = _rgb("FFFFFF")
-        _t(sl, Inches(1.55), y - Inches(0.02), Inches(10.8), Inches(0.6),
+        _t(sl, Inches(1.55), Inches(y - 0.02), Inches(10.8), Inches(0.9),
            [(pt, 17, False, ink, c["body"], 0)], anchor=MSO_ANCHOR.MIDDLE, line=1.2)
-        y = Emu(y + Inches(0.85))
+        txt_h = _lines_h_in(pt, 17, 10.8, 3, 1.2)
+        y = y + max(0.85, txt_h + 0.2)
     # yakuniy gap (rangli quti)
-    txt = concl.get("text", "")
+    txt = _clip(concl.get("text", ""), 150)
     if txt:
-        by = Inches(5.9)
+        by = Inches(max(5.9, y + 0.3))
         bg = c.get("soft") or c.get("card_bg") or c["accent"]
         _rect(sl, Inches(0.9), by, Inches(11.5), Inches(1.2), bg, rounded=True, radius=0.08)
         _rect(sl, Inches(0.9), by + Inches(0.22), Inches(0.08), Inches(0.76), c["accent"])
@@ -605,12 +749,17 @@ def render(deck, out_path):
     c = TEMPLATES.get(deck.get("template", "modern"), TEMPLATES["modern"])
     prs = Presentation(); prs.slide_width = W; prs.slide_height = H
     r_title(_blank(prs), c, deck)
+    # Rasm chap/o'ngda almashinib turadi (n juft/toq) — QAYSI tomondan
+    # BOSHLANISHI esa deck SARLAVHASIGA qarab "tasodifiy" (lekin TAKRORLANADIGAN)
+    # tanlanadi, shu sabab BIR XIL mavzuni qayta yaratsangiz ham, slaydlar
+    # joylashuvi har safar BIR XIL emas — har bir taqdimot o'ziga xos ko'rinadi.
+    start_left = bool(hash(deck.get("title", "")) & 1)
     n = 1
     for s in deck.get("slides", []):
         typ = s.get("type", "bullets")
         sl = _blank(prs)
         if typ in ("image_text", "image"):
-            r_image_text(sl, c, s, n, left=(n % 2 == 0))
+            r_image_text(sl, c, s, n, left=((n % 2 == 0) != start_left))
         else:
             DISPATCH.get(typ, r_bullets)(sl, c, s, n)
         n += 1
