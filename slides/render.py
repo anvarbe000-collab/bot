@@ -21,6 +21,7 @@ deck = {
 """
 
 import os
+import random
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
@@ -746,7 +747,15 @@ def r_conclusion(sl, c, concl, n):
 
 
 def render(deck, out_path):
-    c = TEMPLATES.get(deck.get("template", "modern"), TEMPLATES["modern"])
+    base = TEMPLATES.get(deck.get("template", "modern"), TEMPLATES["modern"])
+    # TEMPLATES ICHIDAGI lug'atni o'zgartirmaymiz (bir nechta foydalanuvchi BIR
+    # VAQTDA slayt yaratishi mumkin — umumiy global holatni o'zgartirish xavfli).
+    # Shu sabab NUSXA olib, FAQAT shu nusxada orqa fonni 3 variantdan TASODIFIY
+    # tanlaymiz — bir xil shablonni qayta tanlasa ham ko'rinishi farq qiladi.
+    c = dict(base)
+    bg_imgs = c.get("bg_imgs") or ([c["bg_img"]] if c.get("bg_img") else [])
+    if bg_imgs:
+        c["bg_img"] = random.choice(bg_imgs)
     prs = Presentation(); prs.slide_width = W; prs.slide_height = H
     r_title(_blank(prs), c, deck)
     # Rasm chap/o'ngda almashinib turadi (n juft/toq) — QAYSI tomondan
