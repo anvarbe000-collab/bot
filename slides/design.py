@@ -19,6 +19,7 @@ Tokenlar:
   img               — rasm uslubi: "panel"|"edge"|"small"|"banner"|"neonframe"|"round"
   img_bg
   stat              — statistika uslubi: "softcard"|"filled"|"plain"|"circle"
+  icon_shape        — ikonka qutisi shakli: "square"(standart)|"circle"
 """
 
 TEMPLATES = {
@@ -94,7 +95,53 @@ TEMPLATES = {
         "card_bg": "FFFFFF", "card_line": "FFFFFF", "ghost": "F5A5B8",
         "img": "round", "img_bg": "FFFFFF", "stat": "circle",
     },
+    "luxe": {
+        "nom": "Luxe", "img_prompt": "ultra luxury minimal product photography, black and gold, elegant soft studio light", "bg_img": "luxe.jpg", "emoji": "✨", "dark": True, "title_bg": True,
+        "bg": "solid", "bg1": "0A0A0A",
+        "ink": "F5EFDD", "muted": "B8A98A", "accent": "D4AF37", "accent2": "F0DFA0",
+        "head": "Georgia", "body": "Calibri", "head_bold": True,
+        "marker": "eyebrow", "tag": "outline", "card": "leftaccent",
+        "card_bg": "1A1710", "card_line": "3A3324",
+        "img": "edge", "img_bg": "15120B", "stat": "filled", "icon_shape": "circle",
+    },
+    "glass": {
+        "nom": "Glass", "img_prompt": "frosted glass morphism 3d render, soft teal and white, translucent panels, modern tech", "bg_img": "glass.jpg", "emoji": "🧊", "dark": False,
+        "bg": "solid", "bg1": "F4FAF9",
+        "ink": "17323A", "muted": "5C7A80", "accent": "0EA5A5", "accent2": "5EEAD4",
+        "head": "Arial", "body": "Calibri", "head_bold": True,
+        "marker": "tagbar", "tag": "pill", "card": "filled",
+        "card_bg": "E6F5F4", "card_line": "E6F5F4", "soft": "E0F5F3",
+        "img": "panel", "img_bg": "E6F5F4", "stat": "softcard", "icon_shape": "circle",
+    },
+    "sunset": {
+        "nom": "Sunset", "img_prompt": "warm golden hour photography, soft bokeh, orange and magenta glow, cinematic premium", "bg_img": "sunset.jpg", "emoji": "🌅", "dark": True, "title_bg": True,
+        "bg": "solid", "bg1": "E8703A",
+        "ink": "FFFFFF", "muted": "FFE3D6", "accent": "FFFFFF", "accent2": "FFD166",
+        "head": "Arial", "body": "Calibri", "head_bold": True,
+        "marker": "tagbar", "tag": "outline", "card": "stagger",
+        "card_bg": "FFFFFF", "card_line": "FFFFFF", "ghost": "FFC2A8",
+        "img": "round", "img_bg": "FFFFFF", "stat": "circle", "icon_shape": "circle",
+    },
+    "mono": {
+        "nom": "Mono", "img_prompt": "extreme high contrast black and white editorial photography, bold minimal", "bg_img": "mono.jpg", "emoji": "⬛", "dark": False,
+        "bg": "solid", "bg1": "FFFFFF",
+        "ink": "0A0A0A", "muted": "6B6B6B", "accent": "0A0A0A", "accent2": "6B6B6B",
+        "head": "Arial", "body": "Calibri", "head_bold": True,
+        "marker": "number", "tag": "outline", "card": "border",
+        "card_bg": "FFFFFF", "card_line": "0A0A0A",
+        "img": "edge", "img_bg": "F2F2F2", "stat": "plain",
+    },
+    "ocean": {
+        "nom": "Ocean", "img_prompt": "deep ocean abstract photography, glowing cyan light, premium tech underwater", "bg_img": "ocean.jpg", "emoji": "🌊", "dark": True, "title_bg": True,
+        "bg": "solid", "bg1": "0B3A52",
+        "ink": "FFFFFF", "muted": "A8D8E8", "accent": "22D3EE", "accent2": "0EA5A5",
+        "head": "Arial", "body": "Calibri", "head_bold": True,
+        "marker": "tagbar", "tag": "outline", "card": "filled",
+        "card_bg": "0E4A66", "card_line": "1A6688",
+        "img": "panel", "img_bg": "0A3147", "stat": "filled", "icon_shape": "circle",
+    },
 }
 
 RUYXAT = ["modern", "editorial", "minimal", "corporate",
-          "academic", "neon", "forest", "coral"]
+          "academic", "neon", "forest", "coral",
+          "luxe", "glass", "sunset", "mono", "ocean"]

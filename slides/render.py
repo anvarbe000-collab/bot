@@ -107,10 +107,30 @@ def _place_img(sl, path, x, y, w, h):
         sl.shapes.add_picture(path, x, y, w, h)
 
 
-def _icon(sl, name, x, y, d, tint_box=None):
+def _icon_box_gradient(sl, x, y, d, c1, c2, shape="square"):
+    """Ikonka ostidagi QUTI — ikki rangli (accent -> accent2) diagonal gradient,
+    tekis bitta rangdan ko'ra chuqurroq, premium ko'rinish beradi."""
+    if shape == "circle":
+        s = sl.shapes.add_shape(MSO_SHAPE.OVAL, x, y, d, d)
+    else:
+        s = sl.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, d, d)
+        try: s.adjustments[0] = 0.26
+        except Exception: pass
+    f = s.fill; f.gradient()
+    try: f.gradient_angle = 45
+    except Exception: pass
+    f.gradient_stops[0].color.rgb = _rgb(c1)
+    f.gradient_stops[1].color.rgb = _rgb(c2)
+    s.line.fill.background()
+    return s
+
+
+def _icon(sl, name, x, y, d, tint_box=None, shape="square"):
+    """tint_box — bitta rang (string) yoki ikki rangli gradient (c1, c2) tuple."""
     p = os.path.join(ICON_DIR, f"{name}.png") if name else ""
     if tint_box:
-        _rect(sl, x, y, d, d, tint_box, rounded=True, radius=0.22)
+        c1, c2 = tint_box if isinstance(tint_box, tuple) else (tint_box, tint_box)
+        _icon_box_gradient(sl, x, y, d, c1, c2, shape=shape)
         pad = int(d * 0.26)
         if name and os.path.exists(p):
             sl.shapes.add_picture(p, x + pad, y + pad, d - 2*pad, d - 2*pad)
@@ -466,7 +486,8 @@ def r_icons(sl, c, s, n):
         y = Inches(3.05)
     for row in s.get("rows", [])[:4]:
         _icon(sl, row.get("icon"), x, y, Inches(0.85),
-              tint_box=c["accent"] if not c["dark"] else c["accent"])
+              tint_box=(c["accent"], c.get("accent2", c["accent"])),
+              shape=c.get("icon_shape", "square"))
         _t(sl, x + Inches(1.15), y - Inches(0.02), Inches(10), Inches(0.5),
            [(row["h"], 18, True, c["ink"], c["head"], 0)])
         _t(sl, x + Inches(1.15), y + Inches(0.45), Inches(9.8), Inches(0.55),

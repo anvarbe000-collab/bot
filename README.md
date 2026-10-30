@@ -102,8 +102,14 @@ foydalanuvchi kelsa — bulut API'ga o'tish tavsiya etiladi.
 - Oqim: mavzu -> 8 shablondan tanlash -> varaq soni (5-15) -> slayt.
 - Rasm o'rni har shablonda belgilangan (AI rasm keyingi bosqichda tushadi).
 
-## Shablonlar (8)
-Modern · Editorial · Minimal · Corporate · Academic · Neon · Forest · Coral
+## Shablonlar (13)
+Modern · Editorial · Minimal · Corporate · Academic · Neon · Forest · Coral ·
+Luxe · Glass · Sunset · Mono · Ocean
+
+Har shablonning orqa foni AI (Together/Flux) orqali generatsiya qilingan
+premium abstrakt rasm (assets/backgrounds/), ikonkalar esa shablon rangida
+(accent→accent2) gradient dumaloq/burchakli qutichada ko'rsatiladi
+(slides/render.py:_icon).
 
 ## ORQA FON RASMLAR (assets/backgrounds/)
 - Har shablonning o'z fon rasmi bor (nozik, abstrakt, bezak).
